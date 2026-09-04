@@ -365,3 +365,329 @@
   .marketplace-shell .marketplace-loader-halo,
   .marketplace-shell .marketplace-loader-glint::before { animation: none !important; }
 }
+
+/* Broker catalog theme ----------------------------------------------------- */
+.eme-broker-catalog {
+  color-scheme: light;
+  transition: background-color 220ms ease, color 180ms ease;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] {
+  color-scheme: dark;
+  --background: #0a0c0d;
+  --foreground: #edf1ee;
+  --card: rgba(19, 22, 23, .82);
+  --card-foreground: #edf1ee;
+  --popover: rgba(15, 18, 19, .96);
+  --popover-foreground: #edf1ee;
+  --secondary: rgba(255, 255, 255, .08);
+  --secondary-foreground: #d8ddda;
+  --muted: rgba(255, 255, 255, .07);
+  --muted-foreground: #9ea6a1;
+  --accent: rgba(29, 128, 69, .16);
+  --accent-foreground: #7bdd9d;
+  --border: rgba(255, 255, 255, .14);
+  --input: rgba(255, 255, 255, .16);
+  --ring: rgba(72, 194, 116, .58);
+  background:
+    radial-gradient(circle at 8% 0%, rgba(47, 53, 56, .58), transparent 28%),
+    radial-gradient(circle at 86% 18%, rgba(12, 71, 39, .17), transparent 34%),
+    linear-gradient(180deg, #0d0f10 0%, #080a0b 100%) !important;
+  color: #edf1ee !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] :where(
+  .eme-catalog-header-surface,
+  .eme-catalog-search-surface,
+  .eme-catalog-metric-card,
+  .eme-catalog-property-card,
+  .eme-catalog-footer-contact,
+  .eme-catalog-glass-surface
+) {
+  border-color: rgba(255, 255, 255, .15) !important;
+  background-color: rgba(18, 21, 22, .78) !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .008)) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 16px 38px rgba(0, 0, 0, .24) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-header-surface {
+  background-color: rgba(14, 17, 18, .78) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08), 0 10px 28px rgba(0, 0, 0, .28) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-profile-hero {
+  border-color: rgba(255, 255, 255, .17) !important;
+  background-color: #0c0f10 !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 18px 42px rgba(0, 0, 0, .34) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-profile-hero-overlay {
+  background: linear-gradient(180deg, rgba(8, 11, 12, .78), rgba(8, 11, 12, .9)) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-property-card {
+  background-color: rgba(14, 17, 18, .9) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .04), 0 10px 26px rgba(0, 0, 0, .26) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-property-card:hover {
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 16px 34px rgba(0, 0, 0, .36) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] :where(
+  .eme-catalog-theme-toggle,
+  .eme-catalog-filter-chip,
+  .eme-catalog-card-badge,
+  .eme-catalog-card-action,
+  .eme-catalog-card-chip,
+  .eme-catalog-secondary-cta,
+  .eme-catalog-icon-surface
+) {
+  border-color: rgba(255, 255, 255, .16) !important;
+  background: rgba(17, 20, 21, .76) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .06), 0 5px 15px rgba(0, 0, 0, .25) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] :where(
+  .eme-catalog-theme-toggle,
+  .eme-catalog-filter-chip,
+  .eme-catalog-card-action,
+  .eme-catalog-secondary-cta
+):hover {
+  border-color: rgba(91, 207, 132, .32) !important;
+  background: rgba(28, 33, 34, .94) !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-card-interest {
+  border-color: rgba(70, 191, 113, .26) !important;
+  background: rgba(25, 111, 59, .15) !important;
+  color: #62d98a !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-filter-panel {
+  border-color: rgba(255, 255, 255, .13) !important;
+  background: rgba(9, 12, 13, .62) !important;
+}
+
+:is(
+  .eme-broker-catalog[data-catalog-theme='dark'],
+  html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface
+) :where(
+  .eme-catalog-search-input,
+  .eme-catalog-input,
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  textarea,
+  select
+) {
+  border-color: rgba(255, 255, 255, .16) !important;
+  background-color: rgba(7, 10, 11, .7) !important;
+  color: #edf1ee !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .035), 0 5px 14px rgba(0, 0, 0, .16) !important;
+}
+
+:is(
+  .eme-broker-catalog[data-catalog-theme='dark'],
+  html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface
+) :where(input, textarea)::placeholder {
+  color: #7f8883 !important;
+  opacity: 1;
+}
+
+:is(
+  .eme-broker-catalog[data-catalog-theme='dark'],
+  html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface
+) :where(
+  [class~='text-[#050505]'],
+  [class~='text-[#111111]'],
+  [class~='text-[#111411]'],
+  [class~='text-[#111713]'],
+  [class~='text-[#151515]'],
+  [class~='text-[#151b17]'],
+  [class~='text-[#172019]'],
+  [class~='text-[#1f2937]'],
+  [class~='text-[#1f2b23]']
+) {
+  color: #edf1ee !important;
+  text-shadow: none !important;
+}
+
+:is(
+  .eme-broker-catalog[data-catalog-theme='dark'],
+  html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface
+) :where(
+  [class~='text-[#2f2f2f]'],
+  [class~='text-[#303330]'],
+  [class~='text-[#303631]'],
+  [class~='text-[#333a36]'],
+  [class~='text-[#334d3f]'],
+  [class~='text-[#343632]'],
+  [class~='text-[#344054]'],
+  [class~='text-[#374151]'],
+  [class~='text-[#38423c]'],
+  [class~='text-[#3f4541]'],
+  [class~='text-[#3f4943]'],
+  [class~='text-[#4B5563]'],
+  [class~='text-[#4f5953]']
+) {
+  color: #cfd5d1 !important;
+}
+
+:is(
+  .eme-broker-catalog[data-catalog-theme='dark'],
+  html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface
+) :where(
+  [class~='text-[#545454]'],
+  [class~='text-[#56605a]'],
+  [class~='text-[#5f5f5f]'],
+  [class~='text-[#5F6B7A]'],
+  [class~='text-[#626b66]'],
+  [class~='text-[#636363]'],
+  [class~='text-[#66706a]'],
+  [class~='text-[#667085]'],
+  [class~='text-[#676767]'],
+  [class~='text-[#68726c]'],
+  [class~='text-[#6a6a6a]'],
+  [class~='text-[#6b6b6b]'],
+  [class~='text-[#6B7280]'],
+  [class~='text-[#6f7a73]'],
+  [class~='text-[#707070]'],
+  [class~='text-[#717b75]'],
+  [class~='text-[#767676]'],
+  [class~='text-[#777b78]'],
+  [class~='text-[#7a837e]'],
+  [class~='text-[#7b8491]'],
+  [class~='text-[#7f817f]'],
+  [class~='text-[#818a84]'],
+  [class~='text-[#838383]'],
+  [class~='text-[#8a8a8a]'],
+  [class~='text-[#94A3B8]'],
+  [class~='text-[#9a9a9a]']
+) {
+  color: #99a29d !important;
+}
+
+:is(
+  .eme-broker-catalog[data-catalog-theme='dark'],
+  html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface
+) :where(
+  [class~='text-[#0d7137]'],
+  [class~='text-[#12863d]'],
+  [class~='text-[#176f3b]'],
+  [class~='text-[#1d6638]'],
+  [class~='text-[#287543]']
+) {
+  color: #68d991 !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] :where(
+  [class~='bg-white'],
+  [class~='bg-white/0'],
+  [class~='bg-white/34'],
+  [class~='bg-white/45'],
+  [class~='bg-white/48'],
+  [class~='bg-white/50'],
+  [class~='bg-white/55'],
+  [class~='bg-white/58'],
+  [class~='bg-white/64'],
+  [class~='bg-white/65'],
+  [class~='bg-white/70'],
+  [class~='bg-white/72'],
+  [class~='bg-white/76'],
+  [class~='bg-white/78'],
+  [class~='bg-white/82'],
+  [class~='bg-white/86'],
+  [class~='bg-white/88'],
+  [class~='bg-white/90'],
+  [class~='bg-white/96'],
+  [class~='bg-[#ecebe7]/70'],
+  [class~='bg-[#edf7ef]'],
+  [class~='bg-[#edf8ef]'],
+  [class~='bg-[#eef2ef]'],
+  [class~='bg-[#eef2f0]'],
+  [class~='bg-[#eef9f1]'],
+  [class~='bg-[#f4faf5]'],
+  [class~='bg-[#f4fbf6]'],
+  [class~='bg-[#f5fbf6]'],
+  [class~='bg-[#fcfbf8]']
+) {
+  background-color: rgba(16, 19, 20, .78) !important;
+  background-image: none !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] :where(
+  [class*='border-white'],
+  [class*='border-[#e'],
+  [class*='border-[#d'],
+  [class*='border-black']
+) {
+  border-color: rgba(255, 255, 255, .15) !important;
+}
+
+html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface {
+  color-scheme: dark;
+  --background: #0d1011;
+  --foreground: #edf1ee;
+  --popover: rgba(15, 18, 19, .97);
+  --popover-foreground: #edf1ee;
+  --muted-foreground: #9ea6a1;
+  --border: rgba(255, 255, 255, .14);
+  --ring: rgba(72, 194, 116, .58);
+  border-color: rgba(255, 255, 255, .16) !important;
+  background-color: rgba(13, 16, 17, .96) !important;
+  background-image: linear-gradient(145deg, rgba(255, 255, 255, .045), rgba(255, 255, 255, .008)) !important;
+  color: #edf1ee !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .07), 0 28px 76px rgba(0, 0, 0, .52) !important;
+}
+
+html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface :where(
+  [class~='bg-white/34'],
+  [class~='bg-white/48'],
+  [class~='bg-white/58'],
+  [class~='bg-white/68'],
+  [class~='bg-white/70'],
+  [class~='bg-white/90'],
+  [class~='bg-[#ecebe7]/70'],
+  [class~='bg-[#eef2ef]']
+) {
+  background-color: rgba(8, 11, 12, .58) !important;
+  background-image: none !important;
+}
+
+html[data-eme-catalog-theme='dark'] .eme-catalog-dialog-surface [data-slot='dialog-close'] {
+  border-color: rgba(255, 255, 255, .17) !important;
+  background: rgba(20, 23, 24, .9) !important;
+  color: #edf1ee !important;
+}
+
+.eme-broker-catalog[data-catalog-theme='dark'] :where(
+  .eme-catalog-header-surface,
+  .eme-catalog-search-surface,
+  .eme-catalog-metric-card,
+  .eme-catalog-property-card,
+  .eme-catalog-footer-contact,
+  .eme-catalog-glass-surface,
+  .eme-catalog-profile-hero,
+  .eme-catalog-filter-panel,
+  .eme-catalog-theme-toggle,
+  .eme-catalog-filter-chip,
+  .eme-catalog-card-action,
+  .eme-catalog-card-chip,
+  .eme-catalog-card-interest
+) {
+  transition-property: color, background-color, border-color, box-shadow, transform;
+  transition-duration: 180ms;
+  transition-timing-function: ease;
+}
+
+@media (min-width: 64rem) {
+  .eme-broker-catalog[data-catalog-theme='dark'] .eme-catalog-profile-hero-overlay {
+    background: linear-gradient(90deg, rgba(8, 11, 12, .97) 0%, rgba(8, 11, 12, .9) 25%, rgba(8, 11, 12, .67) 46%, rgba(8, 11, 12, .26) 66%, rgba(8, 11, 12, .05) 81%, transparent 91%) !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .eme-broker-catalog,
+  .eme-broker-catalog * {
+    transition-duration: .001ms !important;
+  }
+}

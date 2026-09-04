@@ -54,6 +54,7 @@ import {
   CATALOG_SECONDARY_CTA_CLASS,
 } from "@/lib/catalog-visual-system"
 import { WhatsappGlyph } from "@/components/marketplace/property/whatsapp-glyph"
+import { useCatalogTheme } from "@/components/catalog-theme-provider"
 import {
   BrokerAboutContent,
   BrokerCatalogFooterContact,
@@ -157,6 +158,7 @@ export function PublicCatalogLanding({
   listingOnly = false,
   profileOnly = false,
 }: PublicCatalogLandingProps) {
+  const { theme } = useCatalogTheme()
   const [search, setSearch] = useState("")
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
   const [advancedFilters, setAdvancedFilters] = useState<CatalogAdvancedFilters>({
@@ -214,6 +216,15 @@ export function PublicCatalogLanding({
   const installmentCount = Math.min(600, Math.max(1, Number.parseInt(financingInstallments, 10) || 1))
   const monthlyInterest = Math.max(0, parseDecimalInput(financingInterest)) / 100
   const estimatedInstallment = calculateFixedInstallment(financedValue, installmentCount, monthlyInterest)
+
+  useEffect(() => {
+    if (kind !== "broker") return
+    document.documentElement.dataset.emeCatalogTheme = theme
+
+    return () => {
+      delete document.documentElement.dataset.emeCatalogTheme
+    }
+  }, [kind, theme])
 
   useEffect(() => {
     if (!selectedProperty) return
@@ -420,7 +431,10 @@ export function PublicCatalogLanding({
   }
 
   return (
-    <main className={kind === "broker" ? CATALOG_PAGE_BACKGROUND_CLASS : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}>
+    <main
+      data-catalog-theme={kind === "broker" ? theme : undefined}
+      className={kind === "broker" ? CATALOG_PAGE_BACKGROUND_CLASS : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}
+    >
       {brokerCatalog ? (
         <BrokerCatalogHeader
           catalog={brokerCatalog}
@@ -531,7 +545,7 @@ export function PublicCatalogLanding({
         ) : null}
 
         {!profileOnly && !listingOnly ? (
-        <section className={kind === "broker" ? "relative overflow-hidden rounded-[1.15rem] border border-white/80 bg-white/70 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_10px_26px_rgba(57,50,41,.07)] backdrop-blur-[18px] sm:px-8 sm:py-8 lg:px-10" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
+        <section className={kind === "broker" ? "eme-catalog-search-surface relative overflow-hidden rounded-[1.15rem] border border-white/80 bg-white/70 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_10px_26px_rgba(57,50,41,.07)] backdrop-blur-[18px] sm:px-8 sm:py-8 lg:px-10" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
           <div className="mx-auto max-w-none">
             <h2 className="text-[1.3rem] font-semibold tracking-[-0.045em] text-[#111111] sm:text-[2rem]">
               Encontre seu próximo imóvel
@@ -550,7 +564,7 @@ export function PublicCatalogLanding({
                     if (event.key === "Enter") submitSearch()
                   }}
                   placeholder="Ex.: apartamento em Porto Alegre até 900 mil com 2 quartos e vaga"
-                  className="h-[3rem] rounded-[0.85rem] border-[#e7e3dc] bg-white/78 pl-11 pr-4 text-[13px] text-[#111111] shadow-[0_6px_15px_rgba(55,49,41,.07)] placeholder:text-[#7f817f] focus-visible:ring-1 focus-visible:ring-[#d9d2c6] sm:h-[3.55rem] sm:pl-12 sm:text-[15px]"
+                  className="eme-catalog-search-input h-[3rem] rounded-[0.85rem] border-[#e7e3dc] bg-white/78 pl-11 pr-4 text-[13px] text-[#111111] shadow-[0_6px_15px_rgba(55,49,41,.07)] placeholder:text-[#7f817f] focus-visible:ring-1 focus-visible:ring-[#d9d2c6] sm:h-[3.55rem] sm:pl-12 sm:text-[15px]"
                 />
               </div>
               <Button
@@ -577,7 +591,7 @@ export function PublicCatalogLanding({
                     setSearch(suggestion)
                   }}
                   className={cn(
-                      "inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[#e6e2db] bg-white/64 px-2 text-[10px] font-medium text-[#303330] shadow-[0_3px_9px_rgba(53,47,39,.05)] transition hover:border-[#d8d1c7] hover:bg-white/82 sm:h-8 sm:px-3 sm:text-xs",
+                      "eme-catalog-filter-chip inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[#e6e2db] bg-white/64 px-2 text-[10px] font-medium text-[#303330] shadow-[0_3px_9px_rgba(53,47,39,.05)] transition hover:border-[#d8d1c7] hover:bg-white/82 sm:h-8 sm:px-3 sm:text-xs",
                     index < 4 ? "col-span-3" : "col-span-2",
                   )}
                 >
@@ -588,7 +602,7 @@ export function PublicCatalogLanding({
             </div>
 
             {showAdvancedFilters ? (
-              <div className="mt-5 grid gap-4 rounded-[1.4rem] border border-[#ece5dc] bg-[#fcfbf8] p-5 lg:grid-cols-4">
+              <div className="eme-catalog-filter-panel mt-5 grid gap-4 rounded-[1.4rem] border border-[#ece5dc] bg-[#fcfbf8] p-5 lg:grid-cols-4">
                 <FilterField label="Tipo">
                   <select
                     aria-label="Tipo do imóvel"
@@ -735,7 +749,7 @@ export function PublicCatalogLanding({
                 <article
                   key={property.id}
                   id={`imovel-${property.id}`}
-                  className={kind === "broker" ? "flex h-full min-w-0 flex-col overflow-hidden rounded-[1rem] border border-[#e9e5dd] bg-white/76 shadow-[0_8px_22px_rgba(57,50,41,.07)] backdrop-blur-[12px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_13px_28px_rgba(57,50,41,.10)]" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
+                  className={kind === "broker" ? "eme-catalog-property-card flex h-full min-w-0 flex-col overflow-hidden rounded-[1rem] border border-[#e9e5dd] bg-white/76 shadow-[0_8px_22px_rgba(57,50,41,.07)] backdrop-blur-[12px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_13px_28px_rgba(57,50,41,.10)]" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
                 >
                   <div className="relative">
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
@@ -747,7 +761,7 @@ export function PublicCatalogLanding({
                         <CatalogImagePlaceholder />
                       )}
                       <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/28 via-black/10 to-transparent" />
-                      <div className="absolute left-4 top-4 rounded-full border border-white/70 bg-white/82 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_4px_10px_rgba(15,23,42,.07)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58">
+                      <div className="eme-catalog-card-badge absolute left-4 top-4 rounded-full border border-white/70 bg-white/82 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_4px_10px_rgba(15,23,42,.07)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58">
                         {matchLabel}
                       </div>
                     </div>
@@ -757,7 +771,7 @@ export function PublicCatalogLanding({
                     onClick={() => toggleFavorite(property.id)}
                     aria-label={favoriteIds.has(property.id) ? `Remover ${property.title} dos favoritos` : `Favoritar ${property.title}`}
                     aria-pressed={favoriteIds.has(property.id)}
-                    className={kind === "broker" ? "absolute right-3 top-3 flex size-9 items-center justify-center rounded-full border border-white/65 bg-white/82 text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(15,23,42,.10)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
+                    className={kind === "broker" ? "eme-catalog-card-action absolute right-3 top-3 flex size-9 items-center justify-center rounded-full border border-white/65 bg-white/82 text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(15,23,42,.10)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
                   >
                     <Heart className={cn(kind === "broker" ? "size-4" : "size-5", favoriteIds.has(property.id) && "fill-[#159447] text-[#159447]")} />
                   </button>
@@ -790,13 +804,13 @@ export function PublicCatalogLanding({
                     </div>
 
                     <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", kind === "broker" && "mt-auto")}>
-                      <span className="inline-flex w-fit rounded-full border border-white/60 bg-white/78 px-3.5 py-1.5 text-xs font-medium text-[#636363] shadow-[inset_0_1px_0_rgba(255,255,255,.86)] backdrop-blur-[12px] supports-[backdrop-filter]:bg-white/55">
+                      <span className="eme-catalog-card-chip inline-flex w-fit rounded-full border border-white/60 bg-white/78 px-3.5 py-1.5 text-xs font-medium text-[#636363] shadow-[inset_0_1px_0_rgba(255,255,255,.86)] backdrop-blur-[12px] supports-[backdrop-filter]:bg-white/55">
                         {property.type === "Bolsao" ? "Bolsão" : property.type}
                       </span>
                       <Button
                         type="button"
                         onClick={() => openLeadModal(property)}
-                        className="h-9 rounded-full border border-[#dfe7e1] bg-white/70 px-4 text-xs font-medium text-[#176f3b] shadow-[0_3px_9px_rgba(32,91,53,.06)] hover:bg-white"
+                        className="eme-catalog-card-interest h-9 rounded-full border border-[#dfe7e1] bg-white/70 px-4 text-xs font-medium text-[#176f3b] shadow-[0_3px_9px_rgba(32,91,53,.06)] hover:bg-white"
                       >
                         <WhatsappGlyph className="size-4" />
                         Tenho interesse

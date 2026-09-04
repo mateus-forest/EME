@@ -12,10 +12,12 @@ import {
   Map,
   MapPin,
   MessageCircle,
+  Moon,
   Phone,
   Share2,
   Sparkles,
   Star,
+  Sun,
   TrendingUp,
 } from "lucide-react"
 
@@ -38,6 +40,7 @@ import {
   CATALOG_SECONDARY_CTA_CLASS,
 } from "@/lib/catalog-visual-system"
 import { BrokerSpecialtyChips } from "@/components/broker-specialty-chips"
+import { useCatalogTheme } from "@/components/catalog-theme-provider"
 import { WhatsappGlyph } from "@/components/marketplace/property/whatsapp-glyph"
 
 const PREMIUM_BANNER_FALLBACK = "/marketplace/images/hero-residence.png"
@@ -66,18 +69,33 @@ export function BrokerCatalogHeader({
   onShare: () => void
 }) {
   const catalogPath = buildBrokerCatalogPath(catalog.slug)
+  const { theme, toggleTheme } = useCatalogTheme()
+  const isDark = theme === "dark"
+  const themeLabel = isDark ? "Ativar tema claro" : "Ativar tema escuro"
 
   return (
       <header className="sticky top-0 z-50 px-3 pt-4 sm:px-5 sm:pt-5">
-        <div className="relative mx-auto max-w-[1240px] overflow-hidden rounded-[1.2rem] border border-white/80 bg-white/72 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_24px_rgba(54,48,39,.08)] backdrop-blur-[24px] backdrop-saturate-[1.2] supports-[backdrop-filter]:bg-white/48 sm:px-6">
+        <div className="eme-catalog-header-surface relative mx-auto max-w-[1240px] overflow-hidden rounded-[1.2rem] border border-white/80 bg-white/72 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_24px_rgba(54,48,39,.08)] backdrop-blur-[24px] backdrop-saturate-[1.2] supports-[backdrop-filter]:bg-white/48 sm:px-6">
           <div className="relative flex h-[66px] items-center gap-2 sm:h-[70px] sm:gap-3">
-          <Link
-            href={catalogPath}
-            className="flex shrink-0 items-center rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30"
-            aria-label="EME — início do catálogo"
-          >
-            <Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={44} height={30} className="h-auto w-10 sm:w-11" priority />
-          </Link>
+          <div className="flex shrink-0 items-center gap-2">
+            <Link
+              href={catalogPath}
+              className="flex shrink-0 items-center rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30"
+              aria-label="EME — início do catálogo"
+            >
+              <Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={44} height={30} className="h-auto w-10 sm:w-11" priority />
+            </Link>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="eme-catalog-theme-toggle flex size-9 shrink-0 items-center justify-center rounded-full border border-[#e9e5dd] bg-white/78 text-[#303631] shadow-[0_4px_12px_rgba(43,39,32,.08)] backdrop-blur-[16px] transition hover:-translate-y-0.5 hover:bg-white hover:text-[#0f6f37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/35 sm:size-10"
+              aria-label={themeLabel}
+              aria-pressed={isDark}
+              title={themeLabel}
+            >
+              {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
+            </button>
+          </div>
 
           <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 lg:flex" aria-label="Navegação do catálogo">
             <CatalogNavLink href={catalogPath} active={view !== "about"}>Imóveis</CatalogNavLink>
@@ -156,7 +174,7 @@ export function BrokerProfileHero({
 
   return (
     <section className="relative mx-auto w-full max-w-[1240px] pt-0">
-      <div className="relative overflow-hidden rounded-[1.25rem] border border-white/80 bg-[#f5f2ec] shadow-[0_16px_38px_rgba(63,55,44,.09)] lg:min-h-[268px]">
+      <div className="eme-catalog-profile-hero relative overflow-hidden rounded-[1.25rem] border border-white/80 bg-[#f5f2ec] shadow-[0_16px_38px_rgba(63,55,44,.09)] lg:min-h-[268px]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={catalog.bannerUrl || PREMIUM_BANNER_FALLBACK}
@@ -166,7 +184,7 @@ export function BrokerProfileHero({
           decoding="async"
           className="absolute inset-0 h-full w-full object-cover"
         />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(249,248,245,.97)_0%,rgba(249,248,245,.91)_25%,rgba(249,248,245,.70)_45%,rgba(249,248,245,.30)_64%,rgba(249,248,245,.07)_78%,transparent_88%)]" />
+        <div className="eme-catalog-profile-hero-overlay absolute inset-0 bg-[linear-gradient(90deg,rgba(249,248,245,.97)_0%,rgba(249,248,245,.91)_25%,rgba(249,248,245,.70)_45%,rgba(249,248,245,.30)_64%,rgba(249,248,245,.07)_78%,transparent_88%)]" />
 
           <div className="relative z-10 grid gap-5 px-5 py-7 text-center sm:px-7 sm:py-8 lg:grid-cols-[12rem_minmax(0,1fr)] lg:items-center lg:gap-7 lg:px-8 lg:py-8 lg:text-left">
           <div className="relative z-10 mx-auto size-32 shrink-0 overflow-hidden rounded-full border-[5px] border-white/75 bg-white/45 shadow-[inset_0_2px_3px_rgba(255,255,255,.96),0_10px_26px_rgba(43,38,31,.15),0_0_0_1px_rgba(255,255,255,.55)] before:pointer-events-none before:absolute before:inset-0 before:z-10 before:rounded-full before:shadow-[inset_0_2px_2px_rgba(255,255,255,.92),inset_0_-2px_4px_rgba(56,107,76,.08)] after:pointer-events-none after:absolute after:inset-[3px] after:z-10 after:rounded-full after:bg-[linear-gradient(135deg,rgba(255,255,255,.20),transparent_40%,rgba(255,255,255,.08))] sm:size-40 lg:size-48">
@@ -207,7 +225,7 @@ export function BrokerProfileHero({
             <div
               key={label}
               className={cn(
-                "relative grid min-h-[82px] items-center overflow-hidden rounded-[0.85rem] border border-white/80 bg-white/70 px-2 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_6px_16px_rgba(57,50,41,.06)] backdrop-blur-[18px] sm:col-span-1 sm:min-h-[132px] sm:rounded-[1rem] sm:px-3 sm:py-4 sm:shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_20px_rgba(57,50,41,.07)]",
+                "eme-catalog-metric-card relative grid min-h-[82px] items-center overflow-hidden rounded-[0.85rem] border border-white/80 bg-white/70 px-2 py-2.5 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_6px_16px_rgba(57,50,41,.06)] backdrop-blur-[18px] sm:col-span-1 sm:min-h-[132px] sm:rounded-[1rem] sm:px-3 sm:py-4 sm:shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_20px_rgba(57,50,41,.07)]",
                 metrics.length === 5 ? (index < 3 ? "col-span-2" : "col-span-3") : wideMobile ? "col-span-2" : "col-span-1",
                 wideMobile && "sm:col-span-2 sm:py-2.5 lg:col-span-1 lg:py-2.5",
               )}
@@ -337,7 +355,7 @@ export function BrokerContactDialog({ open, onOpenChange, catalog }: { open: boo
 
 export function BrokerCatalogFooterContact({ catalog, onContact }: { catalog: PublicBrokerCatalogData; onContact: () => void }) {
   return (
-    <section id="contato" className="relative scroll-mt-32 overflow-hidden rounded-[1.15rem] border border-white/80 bg-white/70 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_8px_22px_rgba(57,50,41,.07)] backdrop-blur-[18px] sm:px-7">
+    <section id="contato" className="eme-catalog-footer-contact relative scroll-mt-32 overflow-hidden rounded-[1.15rem] border border-white/80 bg-white/70 px-5 py-5 shadow-[inset_0_1px_0_rgba(255,255,255,.95),0_8px_22px_rgba(57,50,41,.07)] backdrop-blur-[18px] sm:px-7">
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-3">
           <span className="flex size-11 shrink-0 items-center justify-center rounded-full border border-[#dce8df] bg-white/72 text-[#0d7137] shadow-[0_4px_11px_rgba(30,85,49,.08)]"><WhatsappGlyph className="size-5" /></span>
