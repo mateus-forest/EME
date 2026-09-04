@@ -104,7 +104,7 @@ type LeadDraft = {
 }
 
 function FinancingField({ label, children }: { label: string; children: ReactNode }) {
-  return <label className="grid min-w-0 gap-1 text-[11px] font-medium text-[#667085]"><span>{label}</span>{children}</label>
+  return <label className="eme-catalog-financing-field grid min-w-0 gap-1 text-[11px] font-medium text-[#667085]"><span>{label}</span>{children}</label>
 }
 
 function parseCurrencyInputToCents(value: string) {
@@ -866,13 +866,13 @@ export function PublicCatalogLanding({
       {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
-        <DialogContent showCloseButton className={cn("box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] p-0 sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl [&_[data-slot=dialog-close]]:fixed [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[max(1rem,env(safe-area-inset-top))] [&_[data-slot=dialog-close]]:z-[90] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-11 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:border [&_[data-slot=dialog-close]]:border-white/80 [&_[data-slot=dialog-close]]:bg-white/90 [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:shadow-lg [&_[data-slot=dialog-close]]:backdrop-blur-xl lg:[&_[data-slot=dialog-close]]:absolute lg:[&_[data-slot=dialog-close]]:right-4 lg:[&_[data-slot=dialog-close]]:top-4", CATALOG_DIALOG_SURFACE_CLASS)}>
+        <DialogContent showCloseButton className={cn("eme-catalog-property-dialog box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] p-0 sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl [&_[data-slot=dialog-close]]:fixed [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[max(1rem,env(safe-area-inset-top))] [&_[data-slot=dialog-close]]:z-[90] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-11 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:border [&_[data-slot=dialog-close]]:border-white/80 [&_[data-slot=dialog-close]]:bg-white/90 [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:shadow-lg [&_[data-slot=dialog-close]]:backdrop-blur-xl lg:[&_[data-slot=dialog-close]]:absolute lg:[&_[data-slot=dialog-close]]:right-4 lg:[&_[data-slot=dialog-close]]:top-4", CATALOG_DIALOG_SURFACE_CLASS)}>
           {selectedProperty && (
-            <div className="block max-h-[94dvh] w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)]">
-              <div className="min-w-0 max-w-full overflow-x-hidden border-b border-white/70 bg-white/34 p-3 backdrop-blur-[12px] sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
+            <div className="eme-catalog-property-dialog-layout block max-h-[94dvh] w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)]">
+              <div className="eme-catalog-property-media-pane min-w-0 max-w-full overflow-x-hidden border-b border-white/70 bg-white/34 p-3 backdrop-blur-[12px] sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
                 <DialogDescription className="sr-only">Detalhes do imóvel selecionado.</DialogDescription>
-                  <div className="relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.25rem] border border-white/80 bg-[#ecebe7]/70 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
+                  <div className="eme-catalog-property-media-frame relative w-full min-w-0 max-w-full overflow-hidden rounded-[1.25rem] border border-white/80 bg-[#ecebe7]/70 shadow-[inset_0_1px_0_rgba(255,255,255,.92),0_16px_42px_rgba(22,36,28,.08)] sm:rounded-[1.5rem]">
                   {image ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={image} alt={selectedProperty.title} loading="eager" fetchPriority="high" decoding="async" onError={(event) => { event.currentTarget.style.display = "none" }} className="aspect-[4/3] max-h-[78dvh] w-full object-cover" />
@@ -894,7 +894,7 @@ export function PublicCatalogLanding({
                   </div>
                   {selectedProperty.images.length > 1 ? (
                     <div
-                      className="mt-3 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+                      className="eme-catalog-property-gallery mt-3 flex w-full min-w-0 max-w-full gap-2 overflow-x-auto overscroll-x-contain pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
                       aria-label="Galeria de imagens do imóvel"
                     >
                       {selectedProperty.images.map((propertyImage, index) => (
@@ -905,7 +905,7 @@ export function PublicCatalogLanding({
                           aria-label={`Ver imagem ${index + 1} de ${selectedProperty.images.length}`}
                           aria-current={currentImageIndex === index ? "true" : undefined}
                           className={cn(
-                            "relative aspect-[4/3] w-[76px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#eef2ef] transition sm:w-[92px]",
+                            "eme-catalog-property-thumbnail relative aspect-[4/3] w-[76px] shrink-0 overflow-hidden rounded-xl border-2 bg-[#eef2ef] transition sm:w-[92px]",
                             currentImageIndex === index
                               ? "border-[#b38a3b] shadow-[0_5px_14px_rgba(179,138,59,.16)]"
                               : "border-white opacity-75 hover:opacity-100",
@@ -918,30 +918,30 @@ export function PublicCatalogLanding({
                     </div>
                   ) : null}
                 </div>
-              <div className="flex w-full min-w-0 max-w-full flex-col overflow-x-clip p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5 lg:p-6">
-                <p className="break-words text-sm text-[#6B7280]">{selectedProperty.location}</p>
-                <h3 className="mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
-                <p className="mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
-                <div className="mt-4 flex flex-wrap gap-2">
+              <div className="eme-catalog-property-info-pane flex w-full min-w-0 max-w-full flex-col overflow-x-clip p-4 pb-[max(1rem,env(safe-area-inset-bottom))] sm:p-5 lg:p-6">
+                <p className="eme-catalog-property-location break-words text-sm text-[#6B7280]">{selectedProperty.location}</p>
+                <h3 className="eme-catalog-property-title mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
+                <p className="eme-catalog-property-price mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
+                <div className="eme-catalog-property-features mt-4 flex flex-wrap gap-2">
                   {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={formatPositiveCountLabel(selectedProperty.bedrooms, "quarto", "quartos")} /> : null}
                   {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={formatPositiveCountLabel(selectedProperty.bathrooms, "banheiro", "banheiros")} /> : null}
                   {selectedProperty.parking > 0 ? <Feature icon={Car} label={formatPositiveCountLabel(selectedProperty.parking, "vaga", "vagas")} /> : null}
                 </div>
                 {selectedProperty.description ? (
-                  <div className="mt-5">
+                  <div className="eme-catalog-property-description mt-5">
                     <p className="text-sm font-medium text-[#374151]">Descrição</p>
                     <p className="mt-2 break-words text-sm leading-6 text-[#6B7280]">{selectedProperty.description}</p>
                   </div>
                 ) : null}
-                <section className={cn(CATALOG_GLASS_SURFACE_CLASS, "mt-5 w-full min-w-0 max-w-full shrink-0 rounded-2xl p-2.5 lg:p-3")}>
-                  <button type="button" onClick={() => setFinancingOpen((current) => !current)} aria-expanded={financingOpen} aria-controls="catalog-financing-simulator" className="flex w-full items-center gap-2 text-left">
-                    <span className={cn(CATALOG_ICON_SURFACE_CLASS, "size-8")}><CircleDollarSign className="size-4" /></span>
+                <section className={cn(CATALOG_GLASS_SURFACE_CLASS, "eme-catalog-financing mt-5 w-full min-w-0 max-w-full shrink-0 rounded-2xl p-2.5 lg:p-3")}>
+                  <button type="button" onClick={() => setFinancingOpen((current) => !current)} aria-expanded={financingOpen} aria-controls="catalog-financing-simulator" className="eme-catalog-financing-trigger flex w-full items-center gap-2 text-left">
+                    <span className={cn(CATALOG_ICON_SURFACE_CLASS, "eme-catalog-financing-icon size-8")}><CircleDollarSign className="size-4" /></span>
                     <h4 className="text-sm font-semibold text-[#1f2b23]">Simule seu financiamento</h4>
-                    <ChevronDown className={cn("ml-auto size-4 text-[#6f7a73] transition-transform duration-300", financingOpen && "rotate-180")} />
+                    <ChevronDown className={cn("eme-catalog-financing-chevron ml-auto size-4 text-[#6f7a73] transition-transform duration-300", financingOpen && "rotate-180")} />
                   </button>
-                  <div id="catalog-financing-simulator" className={cn("grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out", financingOpen ? "mt-2.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0")}>
+                  <div id="catalog-financing-simulator" className={cn("eme-catalog-financing-body grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out", financingOpen ? "mt-2.5 grid-rows-[1fr] opacity-100" : "mt-0 grid-rows-[0fr] opacity-0")}>
                     <div className="min-h-0 overflow-hidden">
-                      <div className="grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-2 lg:gap-2">
+                      <div className="eme-catalog-financing-grid grid min-w-0 grid-cols-1 gap-1.5 lg:grid-cols-2 lg:gap-2">
                         <FinancingField label="Valor do imóvel"><Input aria-label="Valor do imóvel" readOnly value={formatCurrencyFromCents(propertyValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
                         <FinancingField label="Entrada"><StructuredInput kind="currency" value={financingEntry} onValueChange={setFinancingEntry} placeholder="R$ 0,00" aria-label="Valor da entrada" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
                         <FinancingField label="Valor financiado"><Input aria-label="Valor financiado" readOnly value={formatCurrencyFromCents(financedValue)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-medium text-[#344054]")} /></FinancingField>
@@ -949,16 +949,16 @@ export function PublicCatalogLanding({
                         <FinancingField label="Juros mensais"><StructuredInput kind="percent" value={financingInterest} onValueChange={setFinancingInterest} placeholder="0,89% a.m." aria-label="Juros mensais" className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 px-2.5 text-xs text-[#344054]")} /></FinancingField>
                         <FinancingField label="Parcela estimada"><Input aria-label="Parcela estimada" readOnly value={formatCurrencyFromCents(estimatedInstallment)} className={cn(CATALOG_INPUT_CLASS, "h-[34px] w-full min-w-0 bg-white/48 px-2.5 text-xs font-semibold text-[#0d7137]")} /></FinancingField>
                       </div>
-                      <p className="mt-2 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
+                      <p className="eme-catalog-financing-note mt-2 text-[10px] leading-4 text-[#818a84]">Simulação informativa. Taxas e condições finais dependem da instituição financeira.</p>
                     </div>
                   </div>
                 </section>
-                <div className="mt-5 flex shrink-0 flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "h-11 flex-1 text-base font-semibold")}>
+                <div className="eme-catalog-property-actions mt-5 flex shrink-0 flex-col gap-2 sm:flex-row">
+                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "eme-catalog-property-action-primary h-11 flex-1 text-base font-semibold")}>
                     <MessageCircle className="size-4" />
                     Tenho interesse
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className={cn(CATALOG_SECONDARY_CTA_CLASS, "h-11 px-5 text-[#4B5563]")}>
+                  <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className={cn(CATALOG_SECONDARY_CTA_CLASS, "eme-catalog-property-action-secondary h-11 px-5 text-[#4B5563]")}>
                     <Share2 className="size-4" />
                     Compartilhar
                   </Button>
@@ -1544,7 +1544,7 @@ function InlineSpec({ icon: Icon, value }: { icon: typeof Bed; value: string }) 
 
 function Feature({ icon: Icon, label }: { icon: typeof Bed; label: string }) {
   return (
-    <div className="inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/58 px-3 py-1.5 text-sm text-[#5F6B7A] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_3px_10px_rgba(37,43,37,.04)] backdrop-blur-[12px]">
+    <div className="eme-catalog-property-feature inline-flex items-center gap-2 rounded-full border border-white/80 bg-white/58 px-3 py-1.5 text-sm text-[#5F6B7A] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_3px_10px_rgba(37,43,37,.04)] backdrop-blur-[12px]">
       <Icon className="size-4 text-[#0d7137]" />
       <span>{label}</span>
     </div>
