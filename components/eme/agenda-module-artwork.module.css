@@ -1,0 +1,151 @@
+.layout {
+  box-sizing: border-box;
+  display: grid;
+  width: 100%;
+  min-width: 0;
+  grid-template-columns: minmax(0, 58fr) minmax(340px, 42fr);
+  align-items: center;
+  gap: clamp(28px, 4vw, 54px);
+  padding: clamp(28px, 2.6vw, 32px);
+  border-radius: inherit;
+  background: linear-gradient(145deg, rgba(255, 255, 255, .99), rgba(247, 250, 248, .97));
+  color: #111713;
+}
+
+.visual,
+.content {
+  min-width: 0;
+}
+
+.visual {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mockup.mockup {
+  width: 100%;
+  max-width: 640px;
+  height: auto;
+  border-radius: 20px;
+  background: transparent;
+}
+
+.mockup > img {
+  max-width: none;
+  object-fit: contain;
+}
+
+.content {
+  padding-right: 4px;
+}
+
+.eyebrow {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  gap: 11px;
+  padding-right: 58px;
+  color: #0d7838;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: .17em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+
+.eyebrowIcon {
+  display: inline-flex;
+  width: 36px;
+  height: 36px;
+  flex: 0 0 36px;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(13, 120, 56, .12);
+  border-radius: 12px;
+  background: rgba(13, 120, 56, .07);
+}
+
+.title {
+  margin: 25px 0 0;
+  color: #101512;
+  font-size: clamp(32px, 3vw, 44px);
+  font-weight: 650;
+  letter-spacing: -.042em;
+  line-height: 1.08;
+  text-wrap: balance;
+}
+
+.description {
+  margin: 20px 0 0;
+  color: #59645d;
+  font-size: clamp(14px, 1.35vw, 17px);
+  line-height: 1.55;
+  text-wrap: pretty;
+}
+
+.benefits {
+  display: flex;
+  flex-direction: column;
+  margin: 24px 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.benefit {
+  display: flex;
+  min-width: 0;
+  align-items: flex-start;
+  gap: 11px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(28, 49, 37, .075);
+}
+
+.benefit:last-child {
+  border-bottom: 0;
+}
+
+.benefitIcon {
+  display: inline-flex;
+  width: 24px;
+  height: 24px;
+  flex: 0 0 24px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+  border-radius: 999px;
+  background: rgba(13, 120, 56, .09);
+  color: #0d7838;
+}
+
+.benefitTitle {
+  display: block;
+  color: #18201b;
+  font-size: 13.5px;
+  font-weight: 650;
+  line-height: 1.35;
+}
+
+@media (max-height: 760px) and (min-width: 1024px) {
+  .layout {
+    gap: 28px;
+    padding: 26px 30px;
+  }
+
+  .title {
+    margin-top: 18px;
+    font-size: clamp(30px, 2.7vw, 39px);
+  }
+
+  .description {
+    margin-top: 14px;
+  }
+
+  .benefits {
+    margin-top: 17px;
+  }
+
+  .benefit {
+    padding: 7px 0;
+  }
+}

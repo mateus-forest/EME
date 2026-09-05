@@ -158,8 +158,8 @@ export const emeModules: EmeModule[] = [
     ],
     cta: "Conhecer módulo",
       mockup: "/modals/catalogo-2026-final.png",
-    demoLabel: "Ver um exemplo de catálogo",
-    demoHref: "/catalogo/mateusforest",
+    demoLabel: "Ver catálogo real",
+    demoHref: "https://www.meueme.com/catalogo/fabricio-foscarini",
   },
   {
     id: "studio-ia",

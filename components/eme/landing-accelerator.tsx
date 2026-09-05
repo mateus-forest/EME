@@ -2,7 +2,6 @@ import Image from "next/image"
 import {
   ArrowLeft,
   ArrowRight,
-  Bell,
   Check,
   Clock3,
   Crosshair,
@@ -19,6 +18,8 @@ import {
   UserRound,
   UsersRound,
 } from "lucide-react"
+
+import acceleratorStyles from "./landing-accelerator.module.css"
 
 const acceleratorFeatures = [
   {
@@ -130,7 +131,10 @@ export function AcceleratorHero({
   }
 
   return (
-    <section aria-label="Acelerador EME" className="eme-accelerator eme-accelerator--desktop">
+    <section
+      aria-label="Acelerador EME"
+      className={`eme-accelerator eme-accelerator--desktop ${acceleratorStyles.desktop}`}
+    >
       <div aria-hidden className="eme-accelerator__wash" />
       <AcceleratorTopbar onEntrar={onEntrar} onComecar={onComecar} />
 
@@ -188,12 +192,6 @@ function AcceleratorTopbar({
     <div className={`eme-accelerator__topbar${compact ? " is-compact" : ""}`}>
       <ProductBadge compact={compact} />
       <div className="eme-accelerator__controls">
-        {!compact ? (
-          <span className="eme-accelerator__notify" aria-label="Notificações">
-            <Bell aria-hidden strokeWidth={1.7} />
-            <span aria-hidden className="eme-accelerator__notify-dot" />
-          </span>
-        ) : null}
         <button type="button" onClick={onEntrar} className="eme-accelerator__auth-action">
           Entrar
         </button>
@@ -222,7 +220,7 @@ function AcceleratorIntro({ compact = false }: { compact?: boolean }) {
         <p className="eme-accelerator__description">
           O Acelerador EME transforma dados de mercado, economia, sua operação e seu posicionamento em oportunidades reais e um plano de ação claro para você gerar mais resultados.
         </p>
-        <DevelopmentBadge />
+        {compact ? <DevelopmentBadge /> : null}
       </div>
 
       <Image
@@ -251,7 +249,7 @@ function ProductBadge({ compact = false }: { compact?: boolean }) {
   return (
     <span className={`eme-accelerator__product-badge${compact ? " is-compact" : ""}`}>
       <span aria-hidden />
-      Novo produto
+      {compact ? "Novo produto" : "Novo produto · Em desenvolvimento"}
     </span>
   )
 }
@@ -297,7 +295,9 @@ function FeatureCard({
       </span>
       <h2>{title}</h2>
       <p>{description}</p>
-      <ArrowRight aria-hidden className="eme-accelerator-card__arrow" strokeWidth={1.6} />
+      {compact ? (
+        <ArrowRight aria-hidden className="eme-accelerator-card__arrow" strokeWidth={1.6} />
+      ) : null}
     </article>
   )
 }

@@ -6,8 +6,10 @@ import { Calculator, Check, ShieldCheck } from "lucide-react"
 
 import { LandingModalShell } from "@/components/eme/landing-modal-shell"
 import type { EmeModule } from "@/lib/eme-modules"
+import agendaStyles from "./agenda-module-artwork.module.css"
 import financeStyles from "./finance-module-artwork.module.css"
 import mobileStyles from "./mobile-module-artwork.module.css"
+import panelStyles from "./expanded-module-panel.module.css"
 
 type ModuleImageCrop = {
   sourceWidth: number
@@ -86,6 +88,28 @@ const MOBILE_MODULE_COMPLEMENTS: Partial<Record<string, {
 const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
   cos: { sourceWidth: 1672, sourceHeight: 941, x: 129, y: 51, width: 1408, height: 833 },
   catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 284, y: 30, width: 1223, height: 816 },
+}
+const AGENDA_DESKTOP_BENEFITS = [
+  "Agendamento rápido de compromissos",
+  "Lembretes automáticos para você e o cliente",
+  "Sincronização com seu calendário",
+  "Acompanhamento claro do que precisa ser feito",
+] as const
+
+function CatalogDemoLink({ module, compact = false }: { module: EmeModule; compact?: boolean }) {
+  if (module.id !== "catalogo" || !module.demoHref || !module.demoLabel) return null
+
+  return (
+    <a
+      href={module.demoHref}
+      target="_blank"
+      rel="noopener noreferrer"
+      className={`${panelStyles.catalogCta}${compact ? ` ${panelStyles.catalogCtaMobile}` : ""}`}
+    >
+      {module.demoLabel}
+      <span aria-hidden="true">↗</span>
+    </a>
+  )
 }
 
 function subscribeToCompactModal(onStoreChange: () => void) {
@@ -182,7 +206,56 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
           className="absolute bottom-[3.2%] left-[64.1%] h-[10.7%] w-[23.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
         />
       ) : null}
+
+      <CatalogDemoLink module={module} />
     </div>
+  )
+}
+
+function AgendaModuleArtwork({ module }: { module: EmeModule }) {
+  const ModuleIcon = module.icon
+  const mockupCrop = MOBILE_MODULE_ARTWORK_CROPS.agenda
+
+  return (
+    <article
+      data-agenda-modal-layout
+      data-desktop-module-artwork
+      className={agendaStyles.layout}
+    >
+      <div className={agendaStyles.visual}>
+        <CroppedModuleImage
+          src={module.mockup || "/placeholder.svg"}
+          alt={`Prévia visual do módulo ${module.name}`}
+          crop={mockupCrop}
+          sizes="(min-width: 1024px) 58vw, calc(100vw - 60px)"
+          className={agendaStyles.mockup}
+          fit="contain"
+        />
+      </div>
+
+      <div className={agendaStyles.content}>
+        <div className={agendaStyles.eyebrow}>
+          <span className={agendaStyles.eyebrowIcon} aria-hidden="true">
+            <ModuleIcon className="size-5" strokeWidth={1.8} />
+          </span>
+          <span>{module.name}</span>
+        </div>
+
+        <h2 className={agendaStyles.title}>{module.tagline}</h2>
+        <p className={agendaStyles.description}>{module.longDescription}</p>
+
+        <ul className={agendaStyles.benefits} aria-label={`Benefícios de ${module.name}`}>
+          {AGENDA_DESKTOP_BENEFITS.map((benefit) => (
+            <li key={benefit} className={agendaStyles.benefit}>
+              <span className={agendaStyles.benefitIcon} aria-hidden="true">
+                <Check className="size-3.5" strokeWidth={2.25} />
+              </span>
+              <span className={agendaStyles.benefitTitle}>{benefit}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </article>
   )
 }
 
@@ -316,6 +389,8 @@ function MobileModuleArtwork({ module }: { module: EmeModule }) {
         })}
       </ul>
 
+      <CatalogDemoLink module={module} compact />
+
       {complement && ComplementIcon ? (
         <div className={mobileStyles.complement} data-mobile-module-complement>
           <span className={mobileStyles.complementIcon} aria-hidden="true">
@@ -343,12 +418,13 @@ export function ExpandedModulePanel({
   const compact = useCompactModal()
   const aspectRatio = MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO
   const isFinance = module.id === "financeiro"
+  const isAgenda = module.id === "agenda"
 
   return (
     <LandingModalShell
       label={module.name}
       moduleId={module.id}
-      aspectRatio={isFinance ? undefined : aspectRatio}
+      aspectRatio={isFinance || isAgenda ? undefined : aspectRatio}
       originEl={originEl}
       onClose={onClose}
     >
@@ -356,6 +432,8 @@ export function ExpandedModulePanel({
         <MobileModuleArtwork module={module} />
       ) : isFinance ? (
         <FinanceModuleArtwork module={module} />
+      ) : isAgenda ? (
+        <AgendaModuleArtwork module={module} />
       ) : (
         <DesktopModuleArtwork module={module} />
       )}

@@ -7,14 +7,17 @@ const source = readFileSync(
   "utf8",
 )
 
-test("sino do Acelerador permanece somente no header desktop", () => {
+test("header do Acelerador remove o sino e unifica o estado no desktop", () => {
   const topbar = source.slice(
     source.indexOf("function AcceleratorTopbar"),
     source.indexOf("function AcceleratorIntro"),
   )
 
-  assert.match(topbar, /\{!compact \? \([\s\S]*?eme-accelerator__notify/)
+  assert.doesNotMatch(source, /\bBell\b/)
+  assert.doesNotMatch(topbar, /eme-accelerator__notify/)
   assert.match(topbar, /Entrar/)
   assert.match(topbar, /Começar agora/)
   assert.match(topbar, /ProductBadge compact=\{compact\}/)
+  assert.match(source, /Novo produto · Em desenvolvimento/)
+  assert.match(source, /\{compact \? <DevelopmentBadge \/> : null\}/)
 })

@@ -1,0 +1,88 @@
+@media (min-width: 1024px) {
+  .desktop :global(.eme-accelerator__body) {
+    gap: clamp(18px, 2vw, 30px);
+    margin-top: clamp(18px, 2.7vh, 28px);
+  }
+
+  .desktop :global(.eme-accelerator__features) {
+    align-self: start;
+    gap: clamp(9px, .85vw, 13px);
+  }
+
+  .desktop :global(.eme-accelerator-card) {
+    min-height: 0;
+    padding: clamp(13px, 1.05vw, 18px);
+    border-radius: 20px;
+  }
+
+  .desktop :global(.eme-accelerator-card__icon) {
+    width: clamp(38px, 3vw, 46px);
+    height: clamp(38px, 3vw, 46px);
+  }
+
+  .desktop :global(.eme-accelerator-card__icon svg) {
+    width: clamp(18px, 1.5vw, 22px);
+    height: clamp(18px, 1.5vw, 22px);
+  }
+
+  .desktop :global(.eme-accelerator-card h2) {
+    margin-top: clamp(8px, .75vw, 11px);
+    font-size: clamp(12.5px, .92vw, 15.5px);
+  }
+
+  .desktop :global(.eme-accelerator-card p) {
+    margin-top: clamp(5px, .48vw, 7px);
+    font-size: clamp(9.5px, .72vw, 11.5px);
+    line-height: 1.44;
+  }
+
+  .desktop :global(.eme-accelerator__footer) {
+    height: clamp(136px, 18vh, 180px);
+    min-height: 0;
+    margin-top: clamp(10px, 1.6vh, 18px);
+  }
+
+  .desktop :global(.eme-accelerator-impact) {
+    padding: clamp(11px, 1.15vw, 18px) clamp(15px, 1.65vw, 25px);
+  }
+
+  .desktop :global(.eme-accelerator-impact__metrics) {
+    margin-top: clamp(9px, 1.05vh, 13px);
+  }
+
+  .desktop :global(.eme-accelerator-impact__metric strong) {
+    font-size: clamp(20px, 1.7vw, 28px);
+    letter-spacing: -.04em;
+    line-height: 1;
+  }
+
+  .desktop :global(.eme-accelerator-impact__metric p) {
+    margin-top: 4px;
+  }
+
+  .desktop :global(.eme-accelerator-impact__note) {
+    margin-top: clamp(7px, .85vh, 10px);
+  }
+
+  .desktop :global(.eme-accelerator-offer) {
+    padding: clamp(8px, .75vw, 11px);
+  }
+
+  .desktop :global(.eme-accelerator-offer__main) {
+    padding: clamp(6px, .65vw, 10px) clamp(11px, 1.15vw, 17px);
+  }
+
+  .desktop :global(.eme-accelerator-offer__main h2) {
+    margin-top: clamp(5px, .55vh, 7px);
+  }
+
+  .desktop :global(.eme-accelerator-offer__benefits) {
+    gap: clamp(4px, .5vw, 7px);
+    margin-top: clamp(7px, .8vh, 10px);
+  }
+
+  .desktop :global(.eme-accelerator-offer__checklist) {
+    gap: clamp(4px, .55vh, 7px);
+    padding: clamp(5px, .55vw, 8px) clamp(8px, .75vw, 11px);
+  }
+}
