@@ -18,6 +18,7 @@ import {
   EmeModalSurface,
   EmeModalViewport,
 } from "@/components/ui/eme-modal-foundation"
+import styles from "./landing-modal-shell.module.css"
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -32,6 +33,7 @@ type LandingModalShellProps = {
   label: string
   moduleId: string
   aspectRatio?: number
+  imageOnly?: boolean
   originEl?: HTMLElement | null
   onClose: () => void
   children: ReactNode
@@ -61,6 +63,7 @@ export function LandingModalShell({
   label,
   moduleId,
   aspectRatio,
+  imageOnly = false,
   originEl,
   onClose,
   children,
@@ -160,7 +163,8 @@ export function LandingModalShell({
             aria-modal="true"
             data-module-dialog={moduleId}
             data-landing-modal-shell
-            className="eme-landing-modal-shell cursor-default text-foreground"
+            data-landing-modal-image-only={imageOnly ? "true" : undefined}
+            className={`eme-landing-modal-shell cursor-default text-foreground${imageOnly ? ` ${styles.imageOnly}` : ""}`}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
             animate={{
               opacity: closing ? 0 : 1,
@@ -188,15 +192,17 @@ export function LandingModalShell({
                 onClick={handleClose}
                 aria-label="Fechar"
                 data-landing-modal-close
-                className="eme-landing-modal-close text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"
+                className={`eme-landing-modal-close${imageOnly ? ` ${styles.transparentClose}` : " text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"}`}
               >
-                <X
-                  data-eme-modal-close-icon
-                  className="pointer-events-none block size-5 shrink-0"
-                  strokeWidth={2}
-                  aria-hidden="true"
-                  focusable="false"
-                />
+                {imageOnly ? null : (
+                  <X
+                    data-eme-modal-close-icon
+                    className="pointer-events-none block size-5 shrink-0"
+                    strokeWidth={2}
+                    aria-hidden="true"
+                    focusable="false"
+                  />
+                )}
               </button>
             </EmeModalCloseTarget>
           </motion.section>

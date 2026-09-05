@@ -22,7 +22,7 @@ type ModuleImageCrop = {
 }
 
 const MODULE_ASPECT_RATIOS: Record<string, number> = {
-  cos: 1408 / 833,
+  cos: 1672 / 941,
   clientes: 1551 / 1014,
   imoveis: 1536 / 1024,
   catalogo: 1223 / 816,
@@ -46,6 +46,7 @@ const FINANCE_MOCKUP_CROP: ModuleImageCrop = {
   height: 525,
 }
 const COS_DESKTOP_SCREEN = "/modals/cos-screen-desktop.png"
+const COS_DESKTOP_MODAL = "/modals/cos-desktop-approved.png"
 const COS_MOBILE_SCREEN = "/modals/cos-screen-mobile.jpeg"
 const COS_OFFICIAL_LOGO = "/modals/cos-logo-header.png"
 const COS_OFFICIAL_LOGO_CROP: ModuleImageCrop = {
@@ -98,7 +99,6 @@ const MOBILE_MODULE_COMPLEMENTS: Partial<Record<string, {
 }
 
 const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
-  cos: { sourceWidth: 1672, sourceHeight: 941, x: 129, y: 51, width: 1408, height: 833 },
   catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 284, y: 30, width: 1223, height: 816 },
 }
 const AGENDA_DESKTOP_BENEFITS = [
@@ -199,31 +199,25 @@ function CosOfficialLogo({ className = "" }: { className?: string }) {
   )
 }
 
-function CosLayeredArtwork({
+function CosMobileLayeredArtwork({
   module,
   crop,
-  compact = false,
 }: {
   module: EmeModule
   crop: ModuleImageCrop
-  compact?: boolean
 }) {
   return (
     <div
       data-cos-layered-artwork
-      data-mobile-module-mockup={compact ? "" : undefined}
-      className={`${cosStyles.artwork} ${
-        compact
-          ? `${cosStyles.mobileArtwork} ${mobileStyles.mockup}`
-          : cosStyles.desktopArtwork
-      }`}
+      data-mobile-module-mockup=""
+      className={`${cosStyles.artwork} ${cosStyles.mobileArtwork} ${mobileStyles.mockup}`}
       style={{ aspectRatio: `${crop.width} / ${crop.height}` }}
     >
       <CroppedModuleImage
         src={module.mockup || "/placeholder.svg"}
         alt={`Módulo ${module.name}`}
         crop={crop}
-        sizes={compact ? "calc(100vw - 60px)" : "min(92vw, 1350px)"}
+        sizes="calc(100vw - 60px)"
         className={cosStyles.baseArtwork}
         fit="contain"
       />
@@ -233,7 +227,7 @@ function CosLayeredArtwork({
           src={COS_DESKTOP_SCREEN}
           alt="Tela do COS no notebook"
           fill
-          sizes={compact ? "72vw" : "42vw"}
+          sizes="72vw"
           className={cosStyles.screenImage}
           unoptimized
         />
@@ -244,17 +238,11 @@ function CosLayeredArtwork({
           src={COS_MOBILE_SCREEN}
           alt="Tela do COS no celular"
           fill
-          sizes={compact ? "15vw" : "9vw"}
+          sizes="15vw"
           className={cosStyles.screenImage}
           unoptimized
         />
       </div>
-
-      {!compact ? (
-        <div className={cosStyles.desktopLogoPatch}>
-          <CosOfficialLogo className={cosStyles.desktopLogo} />
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -264,8 +252,17 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
 
   return (
     <div data-desktop-module-artwork className="eme-module-modal-artwork relative h-full w-full overflow-hidden">
-      {module.id === "cos" && crop ? (
-        <CosLayeredArtwork module={module} crop={crop} />
+      {module.id === "cos" ? (
+        <Image
+          data-cos-desktop-approved-artwork
+          src={COS_DESKTOP_MODAL}
+          alt="Módulo COS"
+          width={1672}
+          height={941}
+          sizes="min(1120px, calc(100vw - 64px))"
+          className="block h-auto w-full object-contain"
+          unoptimized
+        />
       ) : crop ? (
         <CroppedModuleImage
           src={module.mockup || "/placeholder.svg"}
@@ -450,7 +447,7 @@ function MobileModuleArtwork({ module }: { module: EmeModule }) {
 
       {artworkCrop ? (
         module.id === "cos" ? (
-          <CosLayeredArtwork module={module} crop={artworkCrop} compact />
+          <CosMobileLayeredArtwork module={module} crop={artworkCrop} />
         ) : (
           <CroppedModuleImage
             src={module.mockup || "/placeholder.svg"}
@@ -525,6 +522,7 @@ export function ExpandedModulePanel({
       label={module.name}
       moduleId={module.id}
       aspectRatio={isFinance || isAgenda ? undefined : aspectRatio}
+      imageOnly={module.id === "cos" && !compact}
       originEl={originEl}
       onClose={onClose}
     >

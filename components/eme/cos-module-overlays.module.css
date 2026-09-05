@@ -5,10 +5,6 @@
   background: #f8f8f6;
 }
 
-.desktopArtwork {
-  height: 100%;
-}
-
 .mobileArtwork.mobileArtwork {
   position: relative;
   height: auto;
@@ -35,24 +31,6 @@
   background: #fbfbf9;
 }
 
-.desktopArtwork .desktopScreen {
-  top: 19.6%;
-  left: 4.65%;
-  width: 45.45%;
-  height: 56.2%;
-  border-radius: 0.7% 0.7% 1.2% 1.2%;
-  transform: skewY(1.05deg);
-  transform-origin: left top;
-}
-
-.desktopArtwork .mobileScreen {
-  top: 42.2%;
-  left: 52.65%;
-  width: 9.55%;
-  height: 41.7%;
-  border-radius: 10% / 4%;
-}
-
 .mobileArtwork .desktopScreen {
   top: 6.9%;
   left: 4.35%;
@@ -71,28 +49,10 @@
   border-radius: 10% / 4%;
 }
 
-.desktopLogoPatch {
-  position: absolute;
-  top: 5.9%;
-  left: 68.7%;
-  z-index: 3;
-  display: flex;
-  width: 20.5%;
-  height: 13.7%;
-  align-items: center;
-  padding-left: 7.5%;
-  background: linear-gradient(90deg, #fbfbfa 0%, #fbfbfa 82%, rgba(251, 251, 250, 0) 100%);
-}
-
 .logo.logo {
   flex: 0 0 auto;
   border-radius: 0;
   background: transparent;
-}
-
-.desktopLogo.desktopLogo {
-  width: 56%;
-  height: auto;
 }
 
 .mobileHeaderLogo.mobileHeaderLogo {

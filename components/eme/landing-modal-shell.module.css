@@ -1,0 +1,42 @@
+.imageOnly.imageOnly {
+  overflow: visible !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+}
+
+.imageOnly > :global(.eme-landing-modal-content) {
+  overflow: visible !important;
+  border-radius: 0 !important;
+  background: transparent !important;
+}
+
+.transparentClose.transparentClose {
+  top: calc(11% - 22px) !important;
+  right: auto !important;
+  left: calc(92.584% - 22px) !important;
+  width: 44px !important;
+  min-width: 44px !important;
+  height: 44px !important;
+  min-height: 44px !important;
+  border: 0 !important;
+  background: transparent !important;
+  color: transparent !important;
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
+
+.transparentClose.transparentClose:hover,
+.transparentClose.transparentClose:focus,
+.transparentClose.transparentClose:focus-visible {
+  border: 0 !important;
+  background: transparent !important;
+  color: transparent !important;
+  box-shadow: none !important;
+  outline: 0 !important;
+}
