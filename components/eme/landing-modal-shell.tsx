@@ -33,7 +33,7 @@ type LandingModalShellProps = {
   label: string
   moduleId: string
   aspectRatio?: number
-  imageOnly?: boolean
+  imageOnly?: "desktop" | "mobile"
   originEl?: HTMLElement | null
   onClose: () => void
   children: ReactNode
@@ -63,7 +63,7 @@ export function LandingModalShell({
   label,
   moduleId,
   aspectRatio,
-  imageOnly = false,
+  imageOnly,
   originEl,
   onClose,
   children,
@@ -75,6 +75,7 @@ export function LandingModalShell({
   const completedRef = useRef(false)
   const [closing, setClosing] = useState(false)
   const reduceMotion = useReducedMotion()
+  const isImageOnly = imageOnly != null
 
   useLandingModalScrollLock()
 
@@ -163,8 +164,8 @@ export function LandingModalShell({
             aria-modal="true"
             data-module-dialog={moduleId}
             data-landing-modal-shell
-            data-landing-modal-image-only={imageOnly ? "true" : undefined}
-            className={`eme-landing-modal-shell cursor-default text-foreground${imageOnly ? ` ${styles.imageOnly}` : ""}`}
+            data-landing-modal-image-only={imageOnly}
+            className={`eme-landing-modal-shell cursor-default text-foreground${isImageOnly ? ` ${styles.imageOnly}` : ""}`}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
             animate={{
               opacity: closing ? 0 : 1,
@@ -192,9 +193,9 @@ export function LandingModalShell({
                 onClick={handleClose}
                 aria-label="Fechar"
                 data-landing-modal-close
-                className={`eme-landing-modal-close${imageOnly ? ` ${styles.transparentClose}` : " text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"}`}
+                className={`eme-landing-modal-close${isImageOnly ? ` ${styles.transparentClose} ${imageOnly === "mobile" ? styles.mobileTransparentClose : styles.desktopTransparentClose}` : " text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"}`}
               >
-                {imageOnly ? null : (
+                {isImageOnly ? null : (
                   <X
                     data-eme-modal-close-icon
                     className="pointer-events-none block size-5 shrink-0"

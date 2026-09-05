@@ -14,10 +14,19 @@
   background: transparent !important;
 }
 
-.transparentClose.transparentClose {
+.desktopTransparentClose.desktopTransparentClose {
   top: calc(11% - 22px) !important;
   right: auto !important;
   left: calc(92.584% - 22px) !important;
+}
+
+.mobileTransparentClose.mobileTransparentClose {
+  top: calc(5.938% - 22px) !important;
+  right: auto !important;
+  left: calc(90.104% - 22px) !important;
+}
+
+.transparentClose.transparentClose {
   width: 44px !important;
   min-width: 44px !important;
   height: 44px !important;
@@ -29,6 +38,23 @@
   backdrop-filter: none !important;
   box-shadow: none !important;
   outline: 0 !important;
+}
+
+@media (max-width: 1023px) {
+  .imageOnly.imageOnly {
+    width: min(calc(100vw - 24px), 100%) !important;
+    height: auto !important;
+    max-height: min(calc(100dvh - 24px), 100%) !important;
+    aspect-ratio: auto !important;
+    overflow: hidden !important;
+  }
+
+  .imageOnly > :global(.eme-landing-modal-content) {
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+  }
 }
 
 .transparentClose.transparentClose:hover,

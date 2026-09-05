@@ -7,7 +7,6 @@ import { Calculator, Check, ShieldCheck } from "lucide-react"
 import { LandingModalShell } from "@/components/eme/landing-modal-shell"
 import type { EmeModule } from "@/lib/eme-modules"
 import agendaStyles from "./agenda-module-artwork.module.css"
-import cosStyles from "./cos-module-overlays.module.css"
 import financeStyles from "./finance-module-artwork.module.css"
 import mobileStyles from "./mobile-module-artwork.module.css"
 import panelStyles from "./expanded-module-panel.module.css"
@@ -45,22 +44,11 @@ const FINANCE_MOCKUP_CROP: ModuleImageCrop = {
   width: 635,
   height: 525,
 }
-const COS_DESKTOP_SCREEN = "/modals/cos-screen-desktop.png"
 const COS_DESKTOP_MODAL = "/modals/cos-desktop-approved.png"
-const COS_MOBILE_SCREEN = "/modals/cos-screen-mobile.jpeg"
-const COS_OFFICIAL_LOGO = "/modals/cos-logo-header.png"
-const COS_OFFICIAL_LOGO_CROP: ModuleImageCrop = {
-  sourceWidth: 3919,
-  sourceHeight: 3919,
-  x: 347,
-  y: 1525,
-  width: 3380,
-  height: 991,
-}
+const COS_MOBILE_MODAL = "/modals/cos-mobile-approved.png"
 
 const MOBILE_MODULE_ARTWORK_CROPS: Record<string, ModuleImageCrop> = {
   marketplace: { sourceWidth: 1522, sourceHeight: 1033, x: 55, y: 185, width: 860, height: 650 },
-  cos: { sourceWidth: 1672, sourceHeight: 941, x: 155, y: 170, width: 900, height: 640 },
   clientes: { sourceWidth: 1551, sourceHeight: 1014, x: 50, y: 95, width: 1175, height: 860 },
   imoveis: { sourceWidth: 1536, sourceHeight: 1024, x: 15, y: 135, width: 930, height: 780 },
   catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 300, y: 185, width: 690, height: 620 },
@@ -146,7 +134,6 @@ function CroppedModuleImage({
   className = "",
   mobileMockup = false,
   fit = "cover",
-  unoptimized = false,
 }: {
   src: string
   alt: string
@@ -155,7 +142,6 @@ function CroppedModuleImage({
   className?: string
   mobileMockup?: boolean
   fit?: "cover" | "contain"
-  unoptimized?: boolean
 }) {
   return (
     <div
@@ -172,7 +158,6 @@ function CroppedModuleImage({
         quality={88}
         placeholder="blur"
         blurDataURL={IMAGE_PLACEHOLDER}
-        unoptimized={unoptimized}
         className="absolute inset-0 h-full w-full max-w-none"
         style={{
           left: `${-(crop.x / crop.width) * 100}%`,
@@ -186,64 +171,22 @@ function CroppedModuleImage({
   )
 }
 
-function CosOfficialLogo({ className = "" }: { className?: string }) {
+function CosApprovedArtwork({ compact = false }: { compact?: boolean }) {
+  const src = compact ? COS_MOBILE_MODAL : COS_DESKTOP_MODAL
+  const width = compact ? 941 : 1672
+  const height = compact ? 1672 : 941
+
   return (
-    <CroppedModuleImage
-      src={COS_OFFICIAL_LOGO}
-      alt="COS"
-      crop={COS_OFFICIAL_LOGO_CROP}
-      sizes="180px"
-      className={`${cosStyles.logo} ${className}`}
+    <Image
+      data-cos-approved-artwork={compact ? "mobile" : "desktop"}
+      src={src}
+      alt="Módulo COS"
+      width={width}
+      height={height}
+      sizes={compact ? "calc(100vw - 24px)" : "min(1120px, calc(100vw - 64px))"}
+      className="block h-auto w-full object-contain"
       unoptimized
     />
-  )
-}
-
-function CosMobileLayeredArtwork({
-  module,
-  crop,
-}: {
-  module: EmeModule
-  crop: ModuleImageCrop
-}) {
-  return (
-    <div
-      data-cos-layered-artwork
-      data-mobile-module-mockup=""
-      className={`${cosStyles.artwork} ${cosStyles.mobileArtwork} ${mobileStyles.mockup}`}
-      style={{ aspectRatio: `${crop.width} / ${crop.height}` }}
-    >
-      <CroppedModuleImage
-        src={module.mockup || "/placeholder.svg"}
-        alt={`Módulo ${module.name}`}
-        crop={crop}
-        sizes="calc(100vw - 60px)"
-        className={cosStyles.baseArtwork}
-        fit="contain"
-      />
-
-      <div className={cosStyles.desktopScreen} data-cos-desktop-screen>
-        <Image
-          src={COS_DESKTOP_SCREEN}
-          alt="Tela do COS no notebook"
-          fill
-          sizes="72vw"
-          className={cosStyles.screenImage}
-          unoptimized
-        />
-      </div>
-
-      <div className={cosStyles.mobileScreen} data-cos-mobile-screen>
-        <Image
-          src={COS_MOBILE_SCREEN}
-          alt="Tela do COS no celular"
-          fill
-          sizes="15vw"
-          className={cosStyles.screenImage}
-          unoptimized
-        />
-      </div>
-    </div>
   )
 }
 
@@ -253,16 +196,7 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
   return (
     <div data-desktop-module-artwork className="eme-module-modal-artwork relative h-full w-full overflow-hidden">
       {module.id === "cos" ? (
-        <Image
-          data-cos-desktop-approved-artwork
-          src={COS_DESKTOP_MODAL}
-          alt="Módulo COS"
-          width={1672}
-          height={941}
-          sizes="min(1120px, calc(100vw - 64px))"
-          className="block h-auto w-full object-contain"
-          unoptimized
-        />
+        <CosApprovedArtwork />
       ) : crop ? (
         <CroppedModuleImage
           src={module.mockup || "/placeholder.svg"}
@@ -430,35 +364,25 @@ function MobileModuleArtwork({ module }: { module: EmeModule }) {
       className={`${mobileStyles.layout} eme-hidden-scrollbar`}
     >
       <div data-mobile-module-label className={mobileStyles.eyebrow}>
-        {module.id === "cos" ? (
-          <CosOfficialLogo className={cosStyles.mobileHeaderLogo} />
-        ) : (
-          <>
-            <span className={mobileStyles.eyebrowIcon} aria-hidden="true">
-              <ModuleIcon className="size-5" strokeWidth={1.7} />
-            </span>
-            <span>{moduleLabel}</span>
-          </>
-        )}
+        <span className={mobileStyles.eyebrowIcon} aria-hidden="true">
+          <ModuleIcon className="size-5" strokeWidth={1.7} />
+        </span>
+        <span>{moduleLabel}</span>
       </div>
 
       <h2 data-mobile-module-title className={mobileStyles.title}>{module.tagline}</h2>
       <p data-mobile-module-description className={mobileStyles.description}>{module.longDescription}</p>
 
       {artworkCrop ? (
-        module.id === "cos" ? (
-          <CosMobileLayeredArtwork module={module} crop={artworkCrop} />
-        ) : (
-          <CroppedModuleImage
-            src={module.mockup || "/placeholder.svg"}
-            alt={`Prévia visual do módulo ${module.name}`}
-            crop={artworkCrop}
-            sizes="calc(100vw - 60px)"
-            className={mobileStyles.mockup}
-            mobileMockup
-            fit="contain"
-          />
-        )
+        <CroppedModuleImage
+          src={module.mockup || "/placeholder.svg"}
+          alt={`Prévia visual do módulo ${module.name}`}
+          crop={artworkCrop}
+          sizes="calc(100vw - 60px)"
+          className={mobileStyles.mockup}
+          mobileMockup
+          fit="contain"
+        />
       ) : null}
 
       <ul
@@ -522,11 +446,13 @@ export function ExpandedModulePanel({
       label={module.name}
       moduleId={module.id}
       aspectRatio={isFinance || isAgenda ? undefined : aspectRatio}
-      imageOnly={module.id === "cos" && !compact}
+      imageOnly={module.id === "cos" ? (compact ? "mobile" : "desktop") : undefined}
       originEl={originEl}
       onClose={onClose}
     >
-      {compact ? (
+      {compact && module.id === "cos" ? (
+        <CosApprovedArtwork compact />
+      ) : compact ? (
         <MobileModuleArtwork module={module} />
       ) : isFinance ? (
         <FinanceModuleArtwork module={module} />
