@@ -14,11 +14,11 @@ const styles = readFileSync(
 test("todos os módulos compactos usam uma composição mobile própria", () => {
   assert.doesNotMatch(panelSource, /MOBILE_MODULE_BANNERS/)
   assert.match(panelSource, /function MobileModuleArtwork/)
-  assert.match(panelSource, /\{compact \? \([\s\S]*?<MobileModuleArtwork module=\{module\} \/>/)
+  assert.match(panelSource, /approvedArtwork \? \([\s\S]*?<ApprovedModalArtwork/)
+  assert.match(panelSource, /: compact \? \([\s\S]*?<MobileModuleArtwork module=\{module\} \/>/)
 
   for (const id of [
     "marketplace",
-    "cos",
     "clientes",
     "imoveis",
     "catalogo",
@@ -26,10 +26,13 @@ test("todos os módulos compactos usam uma composição mobile própria", () => 
     "propostas",
     "contratos",
     "agenda",
-    "financeiro",
   ]) {
-    assert.match(panelSource, new RegExp(`(?:"${id}"|${id}):\\s*(?:FINANCE_MOCKUP_CROP|\\{)`))
+    assert.match(panelSource, new RegExp(`(?:"${id}"|${id}):\\s*\\{`))
   }
+
+  assert.match(panelSource, /APPROVED_MODAL_ARTWORKS/)
+  assert.match(panelSource, /cos:\s*\{[\s\S]*?mobile:\s*\{[\s\S]*?cos-mobile-approved\.png/)
+  assert.match(panelSource, /financeiro:\s*\{[\s\S]*?mobile:\s*\{[\s\S]*?finance-mobile-approved\.png/)
 })
 
 test("fluxo mobile segue label, título, descrição, mockup, benefícios e complemento", () => {

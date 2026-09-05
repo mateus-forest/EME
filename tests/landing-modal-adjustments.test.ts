@@ -20,7 +20,7 @@ const acceleratorStyles = readFileSync(
 test("Compromissos usa conteúdo e mockup próprios dentro de um único shell", () => {
   const agendaArtwork = panelSource.slice(
     panelSource.indexOf("function AgendaModuleArtwork"),
-    panelSource.indexOf("function FinanceModuleArtwork"),
+    panelSource.indexOf("function MobileModuleArtwork"),
   )
 
   assert.match(agendaArtwork, /data-agenda-modal-layout/)
@@ -30,7 +30,8 @@ test("Compromissos usa conteúdo e mockup próprios dentro de um único shell", 
   assert.match(agendaArtwork, /AGENDA_DESKTOP_BENEFITS\.map/)
   assert.match(panelSource, /Lembretes automáticos para você e o cliente/)
   assert.match(panelSource, /Acompanhamento claro do que precisa ser feito/)
-  assert.match(panelSource, /aspectRatio=\{isFinance \|\| isAgenda \? undefined : aspectRatio\}/)
+  assert.match(panelSource, /const modalAspectRatio = isAgenda[\s\S]*?approvedArtwork\.width \/ approvedArtwork\.height/)
+  assert.match(panelSource, /aspectRatio=\{modalAspectRatio\}/)
 })
 
 test("Catálogo oferece o catálogo real em uma nova aba", () => {

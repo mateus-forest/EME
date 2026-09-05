@@ -14,16 +14,10 @@
   background: transparent !important;
 }
 
-.desktopTransparentClose.desktopTransparentClose {
-  top: calc(11% - 22px) !important;
-  right: auto !important;
-  left: calc(92.584% - 22px) !important;
-}
-
-.mobileTransparentClose.mobileTransparentClose {
-  top: calc(5.938% - 22px) !important;
-  right: auto !important;
-  left: calc(90.104% - 22px) !important;
+.imageOnlyFrame {
+  position: relative;
+  width: 100%;
+  flex: 0 0 auto;
 }
 
 .transparentClose.transparentClose {

@@ -7,7 +7,6 @@ import { Calculator, Check, ShieldCheck } from "lucide-react"
 import { LandingModalShell } from "@/components/eme/landing-modal-shell"
 import type { EmeModule } from "@/lib/eme-modules"
 import agendaStyles from "./agenda-module-artwork.module.css"
-import financeStyles from "./finance-module-artwork.module.css"
 import mobileStyles from "./mobile-module-artwork.module.css"
 import panelStyles from "./expanded-module-panel.module.css"
 
@@ -20,8 +19,18 @@ type ModuleImageCrop = {
   height: number
 }
 
+type ApprovedModalArtwork = {
+  src: string
+  width: number
+  height: number
+  closePosition: {
+    x: number
+    y: number
+  }
+}
+
 const MODULE_ASPECT_RATIOS: Record<string, number> = {
-  cos: 1672 / 941,
+  cos: 1521 / 828,
   clientes: 1551 / 1014,
   imoveis: 1536 / 1024,
   catalogo: 1223 / 816,
@@ -30,22 +39,48 @@ const MODULE_ASPECT_RATIOS: Record<string, number> = {
   contratos: 1536 / 1024,
   agenda: 1452 / 941,
   marketplace: 1522 / 1033,
-  financeiro: 1077 / 846,
+  financeiro: 1538 / 851,
 }
 const DEFAULT_ASPECT_RATIO = 1480 / 962
 const COMPACT_MODAL_QUERY = "(max-width: 1023px)"
 const IMAGE_PLACEHOLDER =
   "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-const FINANCE_MOCKUP_CROP: ModuleImageCrop = {
-  sourceWidth: 1672,
-  sourceHeight: 941,
-  x: 315,
-  y: 165,
-  width: 635,
-  height: 525,
+const APPROVED_MODAL_ARTWORKS: Record<
+  "cos" | "financeiro",
+  {
+    desktop: ApprovedModalArtwork
+    mobile: ApprovedModalArtwork
+  }
+> = {
+  cos: {
+    desktop: {
+      src: "/modals/cos-desktop-approved.png",
+      width: 1521,
+      height: 828,
+      closePosition: { x: 1472.5, y: 46.5 },
+    },
+    mobile: {
+      src: "/modals/cos-mobile-approved.png",
+      width: 862,
+      height: 1593,
+      closePosition: { x: 808, y: 59.5 },
+    },
+  },
+  financeiro: {
+    desktop: {
+      src: "/modals/finance-desktop-approved.png",
+      width: 1538,
+      height: 851,
+      closePosition: { x: 1492, y: 47.5 },
+    },
+    mobile: {
+      src: "/modals/finance-mobile-approved.png",
+      width: 828,
+      height: 1580,
+      closePosition: { x: 765.5, y: 62 },
+    },
+  },
 }
-const COS_DESKTOP_MODAL = "/modals/cos-desktop-approved.png"
-const COS_MOBILE_MODAL = "/modals/cos-mobile-approved.png"
 
 const MOBILE_MODULE_ARTWORK_CROPS: Record<string, ModuleImageCrop> = {
   marketplace: { sourceWidth: 1522, sourceHeight: 1033, x: 55, y: 185, width: 860, height: 650 },
@@ -56,7 +91,6 @@ const MOBILE_MODULE_ARTWORK_CROPS: Record<string, ModuleImageCrop> = {
   propostas: { sourceWidth: 1536, sourceHeight: 1024, x: 325, y: 30, width: 1210, height: 960 },
   contratos: { sourceWidth: 1536, sourceHeight: 1024, x: 520, y: 135, width: 950, height: 570 },
   agenda: { sourceWidth: 1452, sourceHeight: 941, x: 60, y: 145, width: 740, height: 660 },
-  financeiro: FINANCE_MOCKUP_CROP,
 }
 
 const MOBILE_MODULE_COMPLEMENTS: Partial<Record<string, {
@@ -77,11 +111,6 @@ const MOBILE_MODULE_COMPLEMENTS: Partial<Record<string, {
   contratos: {
     title: "Mais segurança",
     description: "Contratos revisados, claros e prontos para você fechar negócios com tranquilidade.",
-    icon: ShieldCheck,
-  },
-  financeiro: {
-    title: "Controle e previsibilidade",
-    description: "Recebimentos, despesas e comissões organizados para uma operação mais clara e segura.",
     icon: ShieldCheck,
   },
 }
@@ -171,18 +200,28 @@ function CroppedModuleImage({
   )
 }
 
-function CosApprovedArtwork({ compact = false }: { compact?: boolean }) {
-  const src = compact ? COS_MOBILE_MODAL : COS_DESKTOP_MODAL
-  const width = compact ? 941 : 1672
-  const height = compact ? 1672 : 941
-
+function ApprovedModalArtwork({
+  module,
+  artwork,
+  compact,
+}: {
+  module: EmeModule
+  artwork: ApprovedModalArtwork
+  compact: boolean
+}) {
   return (
     <Image
-      data-cos-approved-artwork={compact ? "mobile" : "desktop"}
-      src={src}
-      alt="Módulo COS"
-      width={width}
-      height={height}
+      data-approved-modal-artwork={module.id}
+      data-cos-approved-artwork={
+        module.id === "cos" ? (compact ? "mobile" : "desktop") : undefined
+      }
+      data-finance-approved-artwork={
+        module.id === "financeiro" ? (compact ? "mobile" : "desktop") : undefined
+      }
+      src={artwork.src}
+      alt={`Módulo ${module.name}`}
+      width={artwork.width}
+      height={artwork.height}
       sizes={compact ? "calc(100vw - 24px)" : "min(1120px, calc(100vw - 64px))"}
       className="block h-auto w-full object-contain"
       unoptimized
@@ -195,9 +234,7 @@ function DesktopModuleArtwork({ module }: { module: EmeModule }) {
 
   return (
     <div data-desktop-module-artwork className="eme-module-modal-artwork relative h-full w-full overflow-hidden">
-      {module.id === "cos" ? (
-        <CosApprovedArtwork />
-      ) : crop ? (
+      {crop ? (
         <CroppedModuleImage
           src={module.mockup || "/placeholder.svg"}
           alt={`Módulo ${module.name}`}
@@ -280,80 +317,12 @@ function AgendaModuleArtwork({ module }: { module: EmeModule }) {
   )
 }
 
-function FinanceModuleArtwork({ module }: { module: EmeModule }) {
-  const ModuleIcon = module.icon
-  const [titleLead, titleAccent] = module.tagline.split(/ (?=organizada)/)
-
-  return (
-    <article
-      data-finance-modal-layout
-      data-desktop-module-artwork
-      className={financeStyles.layout}
-    >
-      <div className={financeStyles.eyebrow}>
-        <span className={financeStyles.eyebrowIcon} aria-hidden="true">
-          <ModuleIcon className="size-5" strokeWidth={1.8} />
-        </span>
-        <span>{module.name} EME</span>
-      </div>
-
-      <h2 className={financeStyles.title}>
-        <span>{titleLead}</span>
-        <span className={financeStyles.titleAccent}> {titleAccent}</span>
-      </h2>
-
-      <p className={financeStyles.description}>{module.longDescription}</p>
-
-      <CroppedModuleImage
-        src={module.mockup || "/placeholder.svg"}
-        alt={`Prévia visual do módulo ${module.name}`}
-        crop={FINANCE_MOCKUP_CROP}
-        sizes="(min-width: 1024px) 58vw, calc(100vw - 60px)"
-        className={financeStyles.mockup}
-      />
-
-      <ul className={financeStyles.benefits} aria-label={`Benefícios de ${module.name}`}>
-        {module.benefits.map((benefit) => {
-          const title = typeof benefit === "string" ? benefit : benefit.title
-          const description = typeof benefit === "string" ? null : benefit.description
-
-          return (
-            <li key={title} className={financeStyles.benefit}>
-              <span className={financeStyles.benefitIcon} aria-hidden="true">
-                <Check className="size-3.5" strokeWidth={2.25} />
-              </span>
-              <span className={financeStyles.benefitCopy}>
-                <span className={financeStyles.benefitTitle}>{title}</span>
-                {description ? (
-                  <span className={financeStyles.benefitDescription}>{description}</span>
-                ) : null}
-              </span>
-            </li>
-          )
-        })}
-      </ul>
-
-      <div className={financeStyles.control}>
-        <span className={financeStyles.controlIcon} aria-hidden="true">
-          <ShieldCheck className="size-10" strokeWidth={1.55} />
-        </span>
-        <div>
-          <p className={financeStyles.controlTitle}>Controle e previsibilidade</p>
-          <p className={financeStyles.controlDescription}>
-            Recebimentos, despesas e comissões organizados para uma operação mais clara e segura.
-          </p>
-        </div>
-      </div>
-    </article>
-  )
-}
-
 function MobileModuleArtwork({ module }: { module: EmeModule }) {
   const ModuleIcon = module.icon
   const artworkCrop = MOBILE_MODULE_ARTWORK_CROPS[module.id]
   const complement = MOBILE_MODULE_COMPLEMENTS[module.id]
   const ComplementIcon = complement?.icon
-  const moduleLabel = module.id === "financeiro" || module.id === "marketplace"
+  const moduleLabel = module.id === "marketplace"
     ? `${module.name} EME`
     : module.name
 
@@ -438,24 +407,40 @@ export function ExpandedModulePanel({
 }) {
   const compact = useCompactModal()
   const aspectRatio = MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO
-  const isFinance = module.id === "financeiro"
   const isAgenda = module.id === "agenda"
+  const approvedModuleId = module.id === "cos" || module.id === "financeiro"
+    ? module.id
+    : null
+  const approvedVariant = compact ? "mobile" : "desktop"
+  const approvedArtwork = approvedModuleId
+    ? APPROVED_MODAL_ARTWORKS[approvedModuleId][approvedVariant]
+    : null
+  const modalAspectRatio = isAgenda
+    ? undefined
+    : approvedArtwork
+      ? approvedArtwork.width / approvedArtwork.height
+      : aspectRatio
+  const imageOnly = approvedArtwork
+    ? {
+        variant: approvedVariant,
+        closeXPercent: (approvedArtwork.closePosition.x / approvedArtwork.width) * 100,
+        closeYPercent: (approvedArtwork.closePosition.y / approvedArtwork.height) * 100,
+      }
+    : undefined
 
   return (
     <LandingModalShell
       label={module.name}
       moduleId={module.id}
-      aspectRatio={isFinance || isAgenda ? undefined : aspectRatio}
-      imageOnly={module.id === "cos" ? (compact ? "mobile" : "desktop") : undefined}
+      aspectRatio={modalAspectRatio}
+      imageOnly={imageOnly}
       originEl={originEl}
       onClose={onClose}
     >
-      {compact && module.id === "cos" ? (
-        <CosApprovedArtwork compact />
+      {approvedArtwork ? (
+        <ApprovedModalArtwork module={module} artwork={approvedArtwork} compact={compact} />
       ) : compact ? (
         <MobileModuleArtwork module={module} />
-      ) : isFinance ? (
-        <FinanceModuleArtwork module={module} />
       ) : isAgenda ? (
         <AgendaModuleArtwork module={module} />
       ) : (

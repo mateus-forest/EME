@@ -33,7 +33,11 @@ type LandingModalShellProps = {
   label: string
   moduleId: string
   aspectRatio?: number
-  imageOnly?: "desktop" | "mobile"
+  imageOnly?: {
+    variant: "desktop" | "mobile"
+    closeXPercent: number
+    closeYPercent: number
+  }
   originEl?: HTMLElement | null
   onClose: () => void
   children: ReactNode
@@ -139,6 +143,43 @@ export function LandingModalShell({
 
   const openDuration = reduceMotion ? 0.01 : 0.26
   const closeDuration = reduceMotion ? 0.01 : 0.18
+  const closeClassName = `eme-landing-modal-close${
+    isImageOnly
+      ? ` ${styles.transparentClose}`
+      : " text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"
+  }`
+  const closeControl = (
+    <EmeModalCloseTarget asChild>
+      <button
+        ref={closeButtonRef}
+        type="button"
+        onClick={handleClose}
+        aria-label="Fechar"
+        data-landing-modal-close
+        className={closeClassName}
+        style={
+          imageOnly
+            ? {
+                top: `calc(${imageOnly.closeYPercent}% - 22px)`,
+                right: "auto",
+                left: `calc(${imageOnly.closeXPercent}% - 22px)`,
+              }
+            : undefined
+        }
+      >
+        {isImageOnly ? null : (
+          <X
+            data-eme-modal-close-icon
+            className="pointer-events-none block size-5 shrink-0"
+            strokeWidth={2}
+            aria-hidden="true"
+            focusable="false"
+          />
+        )}
+      </button>
+    </EmeModalCloseTarget>
+  )
+
   return createPortal(
     <EmeModalViewport asChild>
       <div
@@ -164,7 +205,7 @@ export function LandingModalShell({
             aria-modal="true"
             data-module-dialog={moduleId}
             data-landing-modal-shell
-            data-landing-modal-image-only={imageOnly}
+            data-landing-modal-image-only={imageOnly?.variant}
             className={`eme-landing-modal-shell cursor-default text-foreground${isImageOnly ? ` ${styles.imageOnly}` : ""}`}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
             animate={{
@@ -182,30 +223,16 @@ export function LandingModalShell({
           >
             <EmeModalContent asChild flush>
               <div className="eme-landing-modal-content min-h-0 min-w-0">
-                {children}
+                {isImageOnly ? (
+                  <div className={styles.imageOnlyFrame}>
+                    {children}
+                    {closeControl}
+                  </div>
+                ) : children}
               </div>
             </EmeModalContent>
 
-            <EmeModalCloseTarget asChild>
-              <button
-                ref={closeButtonRef}
-                type="button"
-                onClick={handleClose}
-                aria-label="Fechar"
-                data-landing-modal-close
-                className={`eme-landing-modal-close${isImageOnly ? ` ${styles.transparentClose} ${imageOnly === "mobile" ? styles.mobileTransparentClose : styles.desktopTransparentClose}` : " text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme/60 focus-visible:ring-offset-2"}`}
-              >
-                {isImageOnly ? null : (
-                  <X
-                    data-eme-modal-close-icon
-                    className="pointer-events-none block size-5 shrink-0"
-                    strokeWidth={2}
-                    aria-hidden="true"
-                    focusable="false"
-                  />
-                )}
-              </button>
-            </EmeModalCloseTarget>
+            {isImageOnly ? null : closeControl}
           </motion.section>
         </EmeModalSurface>
       </div>

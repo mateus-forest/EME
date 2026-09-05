@@ -23,6 +23,7 @@ const viewports = [
 
 async function assertModalFitsViewport(page: Page, width: number, height: number) {
   const dialog = page.locator("[data-landing-modal-shell]")
+  await expect(dialog).toHaveCSS("opacity", "1")
   const box = await dialog.boundingBox()
   expect(box).not.toBeNull()
   expect(box!.x).toBeGreaterThanOrEqual(0)
@@ -52,8 +53,11 @@ test.describe("Landing — sistema único dos modais de módulos", () => {
 
       for (const [index, module] of modules.entries()) {
         const trigger = page.getByRole("button", { name: `Abrir modulo ${module.name}` })
+        const isImageOnly = module.id === "cos" || module.id === "financeiro"
         await expect(trigger).toBeAttached()
-        await trigger.click({ force: true })
+        await trigger.evaluate((button) => {
+          (button as HTMLButtonElement).click()
+        })
 
         const dialog = page.locator(`[data-module-dialog="${module.id}"]`)
         await expect(dialog).toBeVisible()
@@ -64,7 +68,19 @@ test.describe("Landing — sistema único dos modais de módulos", () => {
         await expect(page.locator("body")).toHaveCSS("overflow", "hidden")
         await assertModalFitsViewport(page, viewport.width, viewport.height)
 
-        if (viewport.compact) {
+        if (isImageOnly) {
+          await expect(dialog).toHaveAttribute(
+            "data-landing-modal-image-only",
+            viewport.compact ? "mobile" : "desktop",
+          )
+          await expect(dialog.locator(`[data-approved-modal-artwork="${module.id}"]`)).toBeVisible()
+          await expect(dialog.locator("[data-mobile-module-scroll]")).toHaveCount(0)
+          await expect(dialog.locator("[data-desktop-module-artwork]")).toHaveCount(0)
+
+          if (viewport.compact) {
+            await expect(dialog.locator(".eme-landing-modal-content")).toHaveCSS("overflow-y", "auto")
+          }
+        } else if (viewport.compact) {
           const scrollArea = dialog.locator("[data-mobile-module-scroll]")
           await expect(scrollArea).toBeVisible()
           await expect(scrollArea).toHaveCSS("overflow-y", "auto")
@@ -106,7 +122,9 @@ test.describe("Landing — sistema único dos modais de módulos", () => {
         } else if (index % 3 === 1) {
           await dialog.locator("[data-landing-modal-close]").click()
         } else {
-          await page.locator(".eme-landing-modal-backdrop").click({ force: true })
+          await page.locator(".eme-landing-modal-backdrop").evaluate((backdrop) => {
+            (backdrop as HTMLElement).click()
+          })
         }
 
         await expect(dialog).toHaveCount(0)
@@ -121,7 +139,9 @@ test.describe("Landing — sistema único dos modais de módulos", () => {
     const trigger = page.getByRole("button", { name: "Abrir modulo Financeiro" })
 
     for (let cycle = 0; cycle < 4; cycle += 1) {
-      await trigger.click({ force: true })
+      await trigger.evaluate((button) => {
+        (button as HTMLButtonElement).click()
+      })
       const dialog = page.locator('[data-module-dialog="financeiro"]')
       await expect(dialog).toBeVisible()
       await dialog.locator("[data-landing-modal-close]").click()
