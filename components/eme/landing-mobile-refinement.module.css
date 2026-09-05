@@ -1,0 +1,84 @@
+.mobileLanding {
+  isolation: isolate;
+}
+
+@media (max-width: 1023px) {
+  .activity {
+    left: max(12px, calc(env(safe-area-inset-left) + 10px)) !important;
+    top: calc(env(safe-area-inset-top) + 54px) !important;
+  }
+
+  .activity > div:first-child {
+    gap: 6px;
+  }
+
+  .activity > div:first-child > :global(.eme-landing-glass-chip) {
+    min-height: 22px;
+    gap: 5px;
+    padding: 3px 8px !important;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.82),
+      0 6px 18px -14px rgba(24, 57, 38, 0.24);
+  }
+
+  .activity > div:first-child > div:first-child > span:first-child {
+    width: 6px;
+    height: 6px;
+  }
+
+  .activity > div:first-child > div:first-child > span:last-child,
+  .activity > div:first-child > a {
+    font-size: 8px;
+    letter-spacing: 0.14em;
+  }
+
+  .activity > div:first-child > a svg {
+    width: 10px;
+    height: 10px;
+  }
+
+  .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact) {
+    right: max(12px, calc(env(safe-area-inset-right) + 10px));
+    bottom: max(58px, calc(env(safe-area-inset-bottom) + 58px));
+  }
+
+  .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact) > button {
+    width: 156px;
+    height: 44px;
+    padding: 0 10px;
+    border-radius: 14px;
+    box-shadow:
+      inset 0 1px 0 rgba(255, 255, 255, 0.78),
+      0 14px 34px -24px rgba(15, 38, 27, 0.48);
+  }
+
+  .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact)
+    :global(.eme-accelerator-teaser__eyebrow) {
+    font-size: 7px;
+    letter-spacing: 0.01em;
+  }
+
+  .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact)
+    :global(.eme-accelerator-teaser__copy) strong {
+    margin-top: 3px;
+    font-size: 8.5px;
+  }
+
+  .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact)
+    :global(.eme-accelerator-teaser__arrow) {
+    width: 27px;
+    height: 27px;
+    flex-basis: 27px;
+    margin-left: 6px;
+  }
+
+  .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact)
+    :global(.eme-accelerator-teaser__arrow) svg {
+    width: 12px;
+    height: 12px;
+  }
+
+  .pagination {
+    z-index: 70;
+  }
+}

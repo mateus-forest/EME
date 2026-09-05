@@ -7,10 +7,10 @@ import { ModuleCard } from "@/components/eme/module-card"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 
 const MOBILE_ORBIT = {
-  radiusX: 210,
-  verticalLift: 128,
+  radiusX: 220,
+  verticalLift: 140,
   sideLift: 18,
-  offsetY: 24,
+  offsetY: 22,
   radiusZ: 92,
   backScale: 0.76,
   frontScale: 1,

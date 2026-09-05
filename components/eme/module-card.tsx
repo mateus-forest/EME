@@ -35,7 +35,7 @@ export function ModuleCard({
   return (
     <div
       data-module-card={mobile ? "mobile" : "desktop"}
-      className={`eme-landing-glass-card relative select-none ${frameClass}`}
+      className={`eme-landing-glass-card relative select-none ${frameClass}${mobile ? " scale-[0.9]" : ""}`}
       style={{
         backfaceVisibility: mobile ? "hidden" : undefined,
         WebkitBackfaceVisibility: mobile ? "hidden" : undefined,

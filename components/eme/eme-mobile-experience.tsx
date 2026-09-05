@@ -13,6 +13,7 @@ import {
 import { LandingActivity } from "@/components/eme/landing-activity"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
+import landingMobileStyles from "./landing-mobile-refinement.module.css"
 
 /**
  * Mobile / PWA experience. The phone composition has its own geometry,
@@ -171,7 +172,7 @@ export function EmeMobileExperience({
 
   return (
     <main
-      className={`fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background${sceneBlocking ? " eme-landing-scene is-paused" : ""}`}
+      className={`${landingMobileStyles.mobileLanding} fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background${sceneBlocking ? " eme-landing-scene is-paused" : ""}`}
     >
       <motion.div
         aria-hidden
@@ -213,7 +214,7 @@ export function EmeMobileExperience({
         <LandingActivity
           authOpen={authOpen}
           compact
-          className="fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[140]"
+          className={`${landingMobileStyles.activity} fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[140]`}
         />
 
         <div
@@ -233,7 +234,11 @@ export function EmeMobileExperience({
         </div>
 
         {!selected && !authOpen ? (
-          <LandingAcceleratorTeaser compact onOpen={() => setAcceleratorOpen(true)} />
+          <LandingAcceleratorTeaser
+            compact
+            className={landingMobileStyles.acceleratorTeaser}
+            onOpen={() => setAcceleratorOpen(true)}
+          />
         ) : null}
 
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
@@ -248,7 +253,8 @@ export function EmeMobileExperience({
 
         {!selected && !authOpen ? (
           <div
-            className="pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-2"
+            data-mobile-orbit-pagination
+            className={`${landingMobileStyles.pagination} pointer-events-none absolute bottom-0 left-1/2 flex -translate-x-1/2 items-center gap-2`}
             style={{ marginBottom: "calc(env(safe-area-inset-bottom) + 22px)" }}
           >
             {emeModules.map((module, index) => {
