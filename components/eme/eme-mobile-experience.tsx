@@ -3,7 +3,9 @@
 import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react"
 
-import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
+import { type AuthMode } from "@/components/eme/auth-panel"
+import { LandingAuthPresentation } from "./landing-auth-presentation"
+import finish from "./landing-finish.module.css"
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import {
@@ -174,7 +176,7 @@ export function EmeMobileExperience({
 
   return (
     <main
-      className={`${landingMobileStyles.mobileLanding} fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background${sceneBlocking ? " eme-landing-scene is-paused" : ""}`}
+      className={`${finish.root} ${landingMobileStyles.mobileLanding} fixed inset-0 h-[100dvh] w-full overflow-hidden overscroll-none bg-background${sceneBlocking ? " eme-landing-scene is-paused" : ""}`}
     >
       <motion.div
         aria-hidden
@@ -323,7 +325,7 @@ export function EmeMobileExperience({
 
       <AnimatePresence>
         {authMode ? (
-          <AuthPanel mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
+          <LandingAuthPresentation mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
         ) : null}
       </AnimatePresence>
     </main>

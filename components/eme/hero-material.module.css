@@ -81,23 +81,23 @@
 }
 
 .logo::before {
-  left: 1%;
-  bottom: -4%;
-  height: 10%;
+  left: 2%;
+  bottom: -3%;
+  height: 12%;
   background:
-    radial-gradient(ellipse 19% 50% at 16% 50%, rgb(37 47 39 / 19%), transparent),
-    radial-gradient(ellipse 25% 50% at 52% 50%, rgb(37 47 39 / 16%), transparent),
-    radial-gradient(ellipse 18% 50% at 85% 50%, rgb(37 47 39 / 19%), transparent);
+    radial-gradient(ellipse 26% 50% at 16% 50%, rgb(37 47 39 / 12%), transparent),
+    radial-gradient(ellipse 30% 50% at 52% 50%, rgb(37 47 39 / 10%), transparent),
+    radial-gradient(ellipse 24% 50% at 85% 50%, rgb(37 47 39 / 12%), transparent);
 }
 
 .logo::after {
   left: 0;
-  bottom: -1%;
-  height: 3%;
+  bottom: 0;
+  height: 2.5%;
   background:
-    radial-gradient(ellipse 17% 50% at 16% 50%, rgb(29 39 30 / 36%), transparent),
-    radial-gradient(ellipse 22% 50% at 52% 50%, rgb(29 39 30 / 30%), transparent),
-    radial-gradient(ellipse 16% 50% at 85% 50%, rgb(29 39 30 / 36%), transparent);
+    radial-gradient(ellipse 17% 50% at 16% 50%, rgb(29 39 30 / 28%), transparent),
+    radial-gradient(ellipse 22% 50% at 52% 50%, rgb(29 39 30 / 23%), transparent),
+    radial-gradient(ellipse 16% 50% at 85% 50%, rgb(29 39 30 / 28%), transparent);
 }
 
 .logo img {

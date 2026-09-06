@@ -67,6 +67,12 @@
 .expected { background: #edf2fc; color: #31548f; }
 .overdue { background: #fff0ea; color: #974121; }
 .steps { padding-left: 18px; font-size: 13px; color: #415c4c; line-height: 1.8; }
+.preview { background: linear-gradient(155deg, #fff 65%, #f8fbf9); border-color: #dfe7e2; box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #edf2ee, 0 2px 3px rgb(29 48 38 / 6%), 0 16px 28px -22px rgb(29 48 38 / 26%); }
+.pill { box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgb(25 52 35 / 5%); }
+.tabs { box-shadow: inset 0 1px 3px rgb(25 52 35 / 6%), 0 1px 0 #fff; }
+.action { background: linear-gradient(145deg, #fff, #eff6f1); box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #e1eae4, 0 2px 3px rgb(23 51 36 / 9%); }
+.action:active { box-shadow: inset 0 1px 3px rgb(23 51 36 / 12%); }
+.financeTotals > div { box-shadow: inset 0 1px 0 #fff, 0 1px 2px rgb(25 52 35 / 4%); }
 @media (max-width: 1023px) {
   .presentation { grid-template-columns: minmax(0, 1fr); grid-template-areas: "intro" "visual" "details"; padding: 26px 24px; gap: 24px; }
   .moduleLabel { padding-right: 38px; }

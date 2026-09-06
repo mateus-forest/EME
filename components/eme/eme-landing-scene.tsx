@@ -4,7 +4,9 @@ import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useMotionValue, useSpring } from "motion/react"
 
 import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
-import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
+import { type AuthMode } from "@/components/eme/auth-panel"
+import { LandingAuthPresentation } from "./landing-auth-presentation"
+import finish from "./landing-finish.module.css"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import {
   AcceleratorHero,
@@ -156,7 +158,7 @@ export function EmeLandingScene({
   return (
     <main
       ref={mainRef}
-      className={`eme-landing-scene relative h-[100svh] w-full overflow-hidden bg-background${sceneBlocking ? " is-paused" : ""}`}
+      className={`${finish.root} eme-landing-scene relative h-[100svh] w-full overflow-hidden bg-background${sceneBlocking ? " is-paused" : ""}`}
     >
       <motion.div
         aria-hidden
@@ -278,7 +280,7 @@ export function EmeLandingScene({
 
       <AnimatePresence>
         {authMode && (
-          <AuthPanel mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
+          <LandingAuthPresentation mode={authMode} onModeChange={onAuthModeChange} onClose={onAuthClose} />
         )}
       </AnimatePresence>
 

@@ -1,0 +1,61 @@
+.root,
+.root :where(h1, h2, h3, h4, p, span, a, button, input, select, textarea, label, li, dt, dd, strong, b, time) {
+  font-family: 'EME Broker Geist', Geist, ui-sans-serif, sans-serif;
+}
+
+/* Shared cadence: identification, explanation, demonstration, then actions. */
+.root [data-choreography] {
+  animation: reveal 420ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: calc(55ms + var(--step, 0) * 45ms);
+}
+.root [data-choreography='1'] { --step: 1; }
+.root [data-choreography='2'] { --step: 2; }
+.root [data-choreography='3'] { --step: 3; }
+.root [data-choreography='4'] { --step: 4; }
+.root [data-choreography='5'] { --step: 5; }
+.root [data-closing='true'] [data-choreography] {
+  animation: withdraw 140ms ease-in both;
+  animation-delay: calc((5 - var(--step, 0)) * 12ms);
+}
+
+.auth { display: contents; }
+.auth :global(.eme-auth-modal-backdrop) { background: rgb(18 33 28 / 44%); backdrop-filter: blur(4px); }
+.auth [role='dialog'] {
+  background: linear-gradient(145deg, #fff, #f7faf8);
+  border-color: #dce5df;
+  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #e6ece8, 0 3px 5px rgb(19 42 29 / 10%), 0 24px 64px -28px rgb(15 36 24 / 35%);
+}
+.auth :is(input, select) {
+  background: #fcfefd;
+  border-color: #d6e1da;
+  box-shadow: inset 0 1px 3px rgb(22 45 31 / 5%), 0 1px 0 #fff;
+}
+.auth input::placeholder { color: #76867c; }
+.auth button { box-shadow: inset 0 1px 0 rgb(255 255 255 / 45%), 0 2px 3px rgb(22 45 31 / 8%); }
+.auth :global(.eme-gradient) { background: linear-gradient(150deg, #27874b, #176d3b); box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), inset 0 -1px 0 #12572f, 0 3px 6px rgb(22 65 36 / 16%); }
+.auth [role='dialog'] h2,
+.auth [role='dialog'] h2 + p,
+.auth form > *,
+.auth form + p {
+  animation: reveal 350ms cubic-bezier(.22, 1, .36, 1) both;
+  animation-delay: 70ms;
+}
+.auth [role='dialog'] h2 + p { animation-delay: 110ms; }
+.auth form > * { animation-delay: 150ms; }
+.auth form > :nth-child(2) { animation-delay: 185ms; }
+.auth form > :nth-child(3) { animation-delay: 220ms; }
+.auth form > :nth-child(n+4) { animation-delay: 255ms; }
+.auth form + p { animation-delay: 280ms; }
+.auth[data-closing='true'] [role='dialog'] :is(h2, h2 + p, form > *, form + p) {
+  animation: withdraw 130ms ease-in both;
+}
+.auth.auth[data-closing='true'] [role='dialog'] h2 { animation-delay: 60ms; }
+.auth.auth[data-closing='true'] [role='dialog'] h2 + p { animation-delay: 40ms; }
+.auth.auth[data-closing='true'] form > :first-child { animation-delay: 20ms; }
+
+@keyframes reveal { from { opacity: 0; transform: translateY(9px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes withdraw { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-4px); } }
+@media (prefers-reduced-motion: reduce) {
+  .root [data-choreography],
+  .auth [role='dialog'] :is(h2, h2 + p, form > *, form + p) { animation: none !important; }
+}

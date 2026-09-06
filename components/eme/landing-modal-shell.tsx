@@ -19,6 +19,7 @@ import {
   EmeModalViewport,
 } from "@/components/ui/eme-modal-foundation"
 import styles from "./landing-modal-shell.module.css"
+import finish from "./landing-finish.module.css"
 
 const FOCUSABLE_SELECTOR = [
   "a[href]",
@@ -106,7 +107,7 @@ export function LandingModalShell({
     if (closingRef.current) return
     closingRef.current = true
     setClosing(true)
-    closeFallbackRef.current = setTimeout(finishClose, reduceMotion ? 30 : 240)
+    closeFallbackRef.current = setTimeout(finishClose, reduceMotion ? 30 : 400)
   }, [finishClose, reduceMotion])
 
   useEffect(() => {
@@ -153,8 +154,8 @@ export function LandingModalShell({
 
   if (typeof document === "undefined") return null
 
-  const openDuration = reduceMotion ? 0.01 : 0.26
-  const closeDuration = reduceMotion ? 0.01 : 0.18
+  const openDuration = reduceMotion ? 0.01 : 0.34
+  const closeDuration = reduceMotion ? 0.01 : 0.2
   const closeClassName = `eme-landing-modal-close${
     isImageOnly
       ? ` ${styles.transparentClose}`
@@ -196,7 +197,7 @@ export function LandingModalShell({
     <EmeModalViewport asChild>
       <div
         data-landing-modal-layer
-        className={`eme-landing-modal-layer${presentation ? ` ${styles.presentationLayer}` : ""}`}
+        className={`${finish.root} eme-landing-modal-layer${presentation ? ` ${styles.presentationLayer}` : ""}`}
       >
         <EmeModalBackdrop asChild>
           <motion.div
@@ -204,7 +205,7 @@ export function LandingModalShell({
             className="eme-landing-modal-backdrop cursor-default"
             initial={{ opacity: 0 }}
             animate={{ opacity: closing ? 0 : 1 }}
-            transition={{ duration: closing ? closeDuration * 0.78 : openDuration * 0.78, ease: "easeOut" }}
+            transition={{ duration: closing ? closeDuration : openDuration * 0.78, delay: closing && !reduceMotion ? 0.1 : 0, ease: "easeOut" }}
             onClick={handleClose}
           />
         </EmeModalBackdrop>
@@ -217,6 +218,7 @@ export function LandingModalShell({
             aria-modal="true"
             data-module-dialog={moduleId}
             data-landing-modal-shell
+            data-closing={closing}
             data-landing-modal-image-only={imageOnly?.variant}
             className={`eme-landing-modal-shell cursor-default text-foreground${presentation ? ` ${styles.presentation}` : ""}${isImageOnly ? ` ${styles.imageOnly}` : ""}`}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
@@ -227,6 +229,7 @@ export function LandingModalShell({
             }}
             transition={{
               duration: closing ? closeDuration : openDuration,
+              delay: closing && !reduceMotion ? 0.1 : 0,
               ease: closing ? [0.4, 0, 1, 1] : [0.22, 1, 0.36, 1],
             }}
             onAnimationComplete={() => {

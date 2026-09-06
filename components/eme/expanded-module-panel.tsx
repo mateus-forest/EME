@@ -105,18 +105,18 @@ export function ExpandedModulePanel({ module, originEl, onClose }: { module: Eme
   return <LandingModalShell label={module.name} moduleId={module.id} presentation originEl={originEl} onClose={onClose}>
     <div className={styles.presentation} data-has-views={Boolean(module.views)}>
       <div className={styles.intro}>
-        <div className={styles.moduleLabel}><span><Icon size={27} strokeWidth={1.6} aria-hidden /></span>{module.name}</div>
-        {module.views && <div className={styles.tabs} role="tablist" aria-label={module.name}>
+        <div className={styles.moduleLabel} data-choreography="0"><span><Icon size={27} strokeWidth={1.6} aria-hidden /></span>{module.name}</div>
+        {module.views && <div className={styles.tabs} data-choreography="1" role="tablist" aria-label={module.name}>
           {module.views.map((item, index) => <button key={item.id} type="button" role="tab" id={`module-tab-${item.id}`} aria-controls={`module-view-${module.id}`} aria-selected={viewIndex === index} tabIndex={viewIndex === index ? 0 : -1} onClick={() => setViewIndex(index)} onKeyDown={(event) => selectTab(event, index)}>{item.label}</button>)}
         </div>}
-        <h2>{module.tagline}</h2>
-        <p id={`module-description-${module.id}`} className={styles.description}>{view?.description ?? module.longDescription}</p>
+        <h2 data-choreography="1">{module.tagline}</h2>
+        <p data-choreography="2" id={`module-description-${module.id}`} className={styles.description}>{view?.description ?? module.longDescription}</p>
       </div>
-      <div className={styles.visual} role={view ? "tabpanel" : undefined} id={`module-view-${module.id}`} aria-labelledby={view ? `module-tab-${view.id}` : undefined} aria-describedby={view ? `module-description-${module.id} module-details-${module.id}` : undefined} tabIndex={view ? 0 : undefined}>
+      <div className={styles.visual} data-choreography="3" role={view ? "tabpanel" : undefined} id={`module-view-${module.id}`} aria-labelledby={view ? `module-tab-${view.id}` : undefined} aria-describedby={view ? `module-description-${module.id} module-details-${module.id}` : undefined} tabIndex={view ? 0 : undefined}>
         {module.id === "imoveis" ? <PropertyPreview /> : module.id === "clientes" ? <ClientPreview /> : module.id === "financeiro" ? <FinancePreview /> : module.id === "studio-ia" ? <StudioPreview /> : module.id === "propostas" ? <DocumentPreview contract={activeId === "contratos"} /> : <PropertyPreview channel={activeId === "marketplace" ? "Marketplace EME" : "Catálogo do corretor"} />}
         <p className={styles.caption}>Demonstração de organização · Dados ilustrativos</p>
       </div>
-      <div className={styles.details} id={`module-details-${module.id}`}>
+      <div className={styles.details} data-choreography="4" id={`module-details-${module.id}`}>
         <ul className={styles.benefits}>{benefits.slice(0, 3).map((benefit) => { const text = typeof benefit === "string" ? benefit : benefit.title; return <li key={text}><span><Check size={18} strokeWidth={2} aria-hidden /></span>{text}</li> })}</ul>
         <p className={styles.note}>{view?.note ?? module.note}</p>
         {href && action && <a className={styles.action} href={href} target="_blank" rel="noopener noreferrer">{action}<ArrowUpRight size={17} aria-hidden /><span className="sr-only"> (abre em nova aba)</span></a>}
