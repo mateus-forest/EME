@@ -651,14 +651,14 @@ export function BrokerClientsPage() {
               </select>
             </label>
 
-            <div className="eme-hidden-scrollbar flex min-w-0 w-full items-center gap-1 overflow-x-auto overflow-y-hidden pb-1.5 lg:w-auto lg:flex-1 lg:overflow-visible lg:pb-0">
+            <div className="flex min-w-0 w-full flex-wrap items-center gap-1 pb-0.5 lg:w-auto lg:flex-1 lg:pb-0">
               {clientFilters.map((filter) => (
                 <button
                   key={filter.id}
                   type="button"
                   onClick={() => setActiveFilter(filter.id)}
                   aria-pressed={activeFilter === filter.id}
-                  className={`h-9 shrink-0 rounded-lg border px-3 text-xs font-medium transition-colors ${activeFilter === filter.id ? "border-[#009b3a]/20 bg-[#eef9f1] text-[#008633]" : "border-transparent bg-transparent text-[#667085] hover:border-black/[0.06] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
+                  className={`h-8.5 rounded-lg border px-2.5 text-[11px] font-medium transition-colors sm:h-9 sm:px-3 sm:text-xs ${activeFilter === filter.id ? "border-[#009b3a]/20 bg-[#eef9f1] text-[#008633]" : "border-transparent bg-transparent text-[#667085] hover:border-black/[0.06] hover:bg-[#f7f8f5] hover:text-[#050505]"}`}
                 >
                   {filter.label}
                 </button>

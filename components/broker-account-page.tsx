@@ -54,7 +54,7 @@ export function BrokerAccountPage() {
         <div
           role="tablist"
           aria-label="Seções da conta"
-          className="flex max-w-full gap-1 overflow-x-auto rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-1.5 shadow-[var(--broker-shadow)] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+          className="grid w-full min-w-0 max-w-full grid-cols-3 gap-1 rounded-[var(--broker-radius-lg)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-1.5 shadow-[var(--broker-shadow)] sm:flex"
         >
           {ACCOUNT_TABS.map((tab) => {
             const Icon = tab.icon
@@ -67,7 +67,7 @@ export function BrokerAccountPage() {
                 role="tab"
                 aria-selected={isActive}
                 onClick={() => selectTab(tab.id)}
-                className={`flex min-w-fit flex-1 items-center justify-center gap-2 rounded-[1rem] px-4 py-2.5 text-sm font-semibold transition-colors ${
+                className={`flex min-w-0 items-center justify-center gap-1.5 rounded-[1rem] px-1.5 py-2 text-[11px] font-semibold transition-colors sm:flex-1 sm:gap-2 sm:px-4 sm:py-2.5 sm:text-sm ${
                   isActive
                     ? "bg-[#009b3a] text-white shadow-md shadow-[#009b3a]/15"
                     : "text-[#667085] hover:bg-[#f6f7f5] hover:text-[#111111]"
@@ -354,7 +354,7 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
               <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
                 JPG ou PNG, até {formatMegabytes(MAX_PHOTO_SOURCE_BYTES)}, recomendado 500 × 500 px.
               </p>
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 sm:gap-4">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -363,10 +363,10 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
                   className="sr-only"
                   onChange={(event) => handlePhotoChange(event.target.files?.[0] ?? null)}
                 />
-                <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-full border border-black/[0.06] bg-white/80 text-lg text-[#5F6B7A]">
+                <div className="flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-full border border-black/[0.06] bg-white/80 text-lg text-[#5F6B7A]">
                   {photoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={photoUrl} alt={fullName} className="h-full w-full object-cover" />
+                    <img src={photoUrl} alt={fullName} className="block h-full w-full max-w-full object-cover" />
                   ) : (
                     "MC"
                   )}
@@ -471,7 +471,7 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
               <p className="-mt-1 text-xs leading-5 text-[#7B8491]">
                 Usada nos ícones, divisórias e preço das imagens geradas para Post Feed e Story.
               </p>
-              <div className="flex items-center gap-3">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3">
                 <input
                   id="brandColor"
                   type="color"
@@ -483,7 +483,7 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
                   value={brandColor}
                   onChange={(event) => setBrandColor(event.target.value.trim())}
                   placeholder={DEFAULT_STUDIO_ACCENT_COLOR}
-                  className="h-11 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35"
+                  className="h-11 min-w-0 flex-1 rounded-xl border-black/[0.06] bg-white/80 text-[#050505] placeholder:text-[#9CA3AF] focus-visible:ring-[#009b3a]/35"
                 />
                 {brandColor ? (
                   <Button
@@ -504,7 +504,7 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
                 JPG, PNG ou SVG, até {formatMegabytes(MAX_PHOTO_SOURCE_BYTES)}. Exibido como marca d&apos;água opcional
                 no rodapé das imagens geradas para Post Feed e Story — sem logo, nenhuma marca d&apos;água aparece.
               </p>
-              <div className="flex items-center gap-4">
+              <div className="flex min-w-0 max-w-full flex-wrap items-center gap-3 sm:gap-4">
                 <input
                   ref={logoInputRef}
                   type="file"
@@ -516,7 +516,7 @@ function AccountForm({ section }: { section: Exclude<AccountTab, "billing"> }) {
                 <div className="flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-black/[0.06] bg-white/80 text-xs text-[#5F6B7A]">
                   {logoUrl ? (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={logoUrl} alt="Logo" className="h-auto max-h-full w-auto max-w-full object-contain" />
+                    <img src={logoUrl} alt="Logo" className="block h-auto max-h-full w-auto max-w-full object-contain" />
                   ) : (
                     "—"
                   )}

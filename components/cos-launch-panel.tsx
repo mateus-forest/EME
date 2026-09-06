@@ -264,9 +264,9 @@ export function CosLaunchPanel() {
       variant="cos"
       contentClassName="!p-0"
     >
-      <div className="relative flex h-full min-h-0 flex-col overflow-hidden bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
+      <div className="relative flex h-full min-h-0 min-w-0 flex-col overflow-hidden bg-transparent md:bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)]">
         <CosLaunchOperationHealth />
-        <div className="mx-auto flex w-full max-w-6xl min-h-0 flex-1 flex-col px-4 pb-3 pt-3 sm:px-6 lg:pb-4 lg:pt-7 lg:pr-[260px]">
+        <div className="mx-auto flex min-h-0 w-full min-w-0 max-w-6xl flex-1 flex-col px-4 pb-3 pt-2 sm:px-6 lg:pb-4 lg:pt-7 lg:pr-[260px]">
           <header className="mb-3 shrink-0 lg:mb-2">
             <h1 className="text-[2.1rem] font-medium leading-[1.05] tracking-[-0.035em] text-slate-950 sm:text-[2.2rem] lg:text-[2rem] lg:tracking-[-0.025em]">
               Olá, {firstName}.
@@ -287,7 +287,7 @@ export function CosLaunchPanel() {
             ))}
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-[30px] border border-white/80 bg-white/28 px-3 py-4 shadow-[inset_0_1px_0_rgba(255,255,255,.8)] sm:px-5">
+          <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-[26px] border border-white/80 bg-white/28 px-3 py-3 shadow-[inset_0_1px_0_rgba(255,255,255,.8)] sm:rounded-[30px] sm:px-5 sm:py-4">
             <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
               <div className="flex-1 space-y-4 overflow-y-auto pr-2">
                 {isConversationLoading ? (

@@ -192,14 +192,14 @@ export function BrokerCatalogPage() {
 
             <BrokerSurface padding="compact">
               <SectionHeading title="Banner" description="Imagem panorâmica do topo (JPG, PNG ou WebP, até 4 MB). Sem upload, o catálogo usa o fallback premium EME." />
-              <div className="relative mt-4 aspect-[3/1] min-h-36 overflow-hidden rounded-2xl border border-black/[0.07] bg-[#eef2ef]">
+              <div className="relative mt-4 min-w-0 w-full max-w-full overflow-hidden rounded-2xl border border-black/[0.07] bg-[#eef2ef]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={draft.bannerUrl || '/marketplace/images/hero-residence.png'} alt="Prévia do banner" className="h-full w-full object-cover" />
+                <img src={draft.bannerUrl || '/marketplace/images/hero-residence.png'} alt="Prévia do banner" className="block aspect-[3/1] h-auto w-full max-w-full object-cover" />
                 {!draft.bannerUrl ? <span className="absolute left-3 top-3 rounded-full bg-white/90 px-3 py-1 text-[11px] font-semibold text-[#4f5b54] shadow-sm">Fallback premium</span> : null}
               </div>
-              <div className="mt-3 flex flex-wrap gap-2">
-                <button type="button" disabled={saving || uploading !== null} onClick={() => bannerInput.current?.click()} className={secondaryButtonClass}><Upload className="size-4" />{uploading === 'banner' ? 'Enviando...' : draft.bannerUrl ? 'Trocar banner' : 'Enviar banner'}</button>
-                {draft.bannerUrl ? <button type="button" disabled={saving || uploading !== null} onClick={() => void removeMedia('banner')} className={dangerButtonClass}><Trash2 className="size-4" />Remover</button> : null}
+              <div className="mt-3 flex min-w-0 max-w-full flex-wrap gap-2">
+                <button type="button" disabled={saving || uploading !== null} onClick={() => bannerInput.current?.click()} className={`${secondaryButtonClass} max-w-full px-3 sm:px-4`}><Upload className="size-4" />{uploading === 'banner' ? 'Enviando...' : draft.bannerUrl ? 'Trocar banner' : 'Enviar banner'}</button>
+                {draft.bannerUrl ? <button type="button" disabled={saving || uploading !== null} onClick={() => void removeMedia('banner')} className={`${dangerButtonClass} max-w-full px-3 sm:px-4`}><Trash2 className="size-4" />Remover</button> : null}
                 <input ref={bannerInput} type="file" accept="image/jpeg,image/png,image/webp" className="sr-only" onChange={(event) => void uploadMedia('banner', event.target.files?.[0])} />
               </div>
             </BrokerSurface>

@@ -411,30 +411,30 @@ export function BrokerFinancialPage() {
       primaryActionLabel="Novo lançamento"
       primaryActionOnClick={() => openNew(primaryType)}
     >
-      <div className="grid gap-4">
+      <div className="grid min-w-0 max-w-full gap-3 px-3 pb-4 sm:gap-4 sm:px-0 sm:pb-0">
         {error ? (
-          <div role="alert" className="flex items-start justify-between gap-3 rounded-[var(--broker-radius-md)] border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+          <div role="alert" className="flex min-w-0 flex-col items-start justify-between gap-3 rounded-[var(--broker-radius-md)] border border-red-200 bg-red-50 p-3 text-sm text-red-800 sm:flex-row sm:p-4">
             <span>{error}</span>
             <Button type="button" variant="outline" size="sm" onClick={() => void loadData()} className="shrink-0 bg-white">Tentar novamente</Button>
           </div>
         ) : null}
 
-        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as FinancialTab)} className="gap-4">
-          <div className="overflow-x-auto pb-1">
-            <TabsList className="h-10 min-w-max rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-1 shadow-[var(--broker-shadow-xs)]">
-              <TabsTrigger value="summary" className="px-3.5">Resumo</TabsTrigger>
-              <TabsTrigger value="receipts" className="px-3.5">Recebimentos</TabsTrigger>
-              <TabsTrigger value="expenses" className="px-3.5">Despesas</TabsTrigger>
-              <TabsTrigger value="commissions" className="px-3.5">Comissões</TabsTrigger>
-              <TabsTrigger value="accounts" className="px-3.5">Contas</TabsTrigger>
+        <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as FinancialTab)} className="min-w-0 max-w-full gap-3 sm:gap-4">
+          <div className="min-w-0 max-w-full pb-0.5">
+            <TabsList className="grid h-auto w-full min-w-0 grid-cols-3 gap-1 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface)] p-1 shadow-[var(--broker-shadow-xs)] sm:inline-flex sm:h-10 sm:w-auto sm:gap-0">
+              <TabsTrigger value="summary" className="min-w-0 px-2 text-[11px] sm:px-3.5 sm:text-sm">Resumo</TabsTrigger>
+              <TabsTrigger value="receipts" className="min-w-0 px-2 text-[11px] sm:px-3.5 sm:text-sm">Recebimentos</TabsTrigger>
+              <TabsTrigger value="expenses" className="min-w-0 px-2 text-[11px] sm:px-3.5 sm:text-sm">Despesas</TabsTrigger>
+              <TabsTrigger value="commissions" className="min-w-0 px-2 text-[11px] sm:px-3.5 sm:text-sm">Comissões</TabsTrigger>
+              <TabsTrigger value="accounts" className="min-w-0 px-2 text-[11px] sm:px-3.5 sm:text-sm">Contas</TabsTrigger>
             </TabsList>
           </div>
 
-          <TabsContent value="summary" className="grid gap-4">
+          <TabsContent value="summary" className="grid min-w-0 max-w-full gap-3 sm:gap-4">
             {isLoading || !data ? <FinancialLoading /> : <SummaryView data={data} />}
           </TabsContent>
 
-          <TabsContent value="receipts" className="grid gap-4">
+          <TabsContent value="receipts" className="grid min-w-0 max-w-full gap-3 sm:gap-4">
             <SectionHeader
               title="Recebimentos"
               description="Comissões, honorários, locações, sinais e outras entradas operacionais."
@@ -446,7 +446,7 @@ export function BrokerFinancialPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="expenses" className="grid gap-4">
+          <TabsContent value="expenses" className="grid min-w-0 max-w-full gap-3 sm:gap-4">
             <SectionHeader
               title="Despesas"
               description="Custos essenciais da operação, sem pretensão contábil ou fiscal."
@@ -458,14 +458,14 @@ export function BrokerFinancialPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="commissions" className="grid gap-4">
+          <TabsContent value="commissions" className="grid min-w-0 max-w-full gap-3 sm:gap-4">
             <SectionHeader
               title="Comissões"
               description="Valor calculado automaticamente sobre cada operação registrada."
               action="Nova comissão"
               onAction={() => openNew("commission")}
             />
-            <div className="rounded-[var(--broker-radius-md)] border border-[var(--broker-accent-border)] bg-[var(--broker-accent-soft)] px-4 py-3 text-sm text-[var(--broker-accent-strong)]">
+            <div className="min-w-0 max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-accent-border)] bg-[var(--broker-accent-soft)] px-3 py-2.5 text-xs leading-5 text-[var(--broker-accent-strong)] sm:px-4 sm:py-3 sm:text-sm">
               Exemplo: R$ 500.000,00 × 6% = R$ 30.000,00 de comissão.
             </div>
             {isLoading || !data ? <FinancialLoading /> : (
@@ -473,7 +473,7 @@ export function BrokerFinancialPage() {
             )}
           </TabsContent>
 
-          <TabsContent value="accounts" className="grid gap-4">
+          <TabsContent value="accounts" className="grid min-w-0 max-w-full gap-3 sm:gap-4">
             <SectionHeader
               title="Contas"
               description="Saldos operacionais calculados sem conexão bancária ou conciliação automática."
@@ -486,22 +486,22 @@ export function BrokerFinancialPage() {
       </div>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="max-h-[90dvh] overflow-y-auto rounded-[var(--broker-radius-lg)] border-[#d0d5dd] bg-white text-[#101828] sm:max-w-2xl [&_[data-slot=dialog-close]]:text-[#475467] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]:hover]:bg-[#f2f4f7] [&_[data-slot=dialog-close]:hover]:text-[#101828] [&_[data-slot=dialog-close]:focus-visible]:ring-[#08783e]/25">
+        <DialogContent className="max-h-[calc(100dvh-1.5rem)] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[var(--broker-radius-lg)] border-[#d0d5dd] bg-white p-4 text-[#101828] sm:max-h-[90dvh] sm:max-w-2xl sm:p-6 [&_[data-slot=dialog-close]]:text-[#475467] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]:hover]:bg-[#f2f4f7] [&_[data-slot=dialog-close]:hover]:text-[#101828] [&_[data-slot=dialog-close]:focus-visible]:ring-[#08783e]/25">
           <DialogHeader className="gap-1.5 pr-8">
             <DialogTitle className="text-xl font-semibold leading-tight tracking-[-0.02em] text-[#101828]">Novo lançamento</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-[#475467]">Registre somente a movimentação operacional do corretor.</DialogDescription>
           </DialogHeader>
           <form
             onSubmit={saveEntry}
-            className="grid gap-4 text-[#101828] [&_[data-slot=input]]:border-[#d0d5dd] [&_[data-slot=input]]:bg-white [&_[data-slot=input]]:text-[#101828] [&_[data-slot=input]]:placeholder:text-[#667085] [&_[data-slot=input]:disabled]:border-[#e4e7ec] [&_[data-slot=input]:disabled]:bg-[#f2f4f7] [&_[data-slot=input]:disabled]:text-[#667085] [&_[data-slot=input]:disabled]:opacity-100 [&_[data-slot=input]:focus-visible]:border-[#08783e] [&_[data-slot=input]:focus-visible]:ring-[#08783e]/15 [&_[data-slot=textarea]]:border-[#d0d5dd] [&_[data-slot=textarea]]:bg-white [&_[data-slot=textarea]]:text-[#101828] [&_[data-slot=textarea]]:placeholder:text-[#667085] [&_[data-slot=textarea]:disabled]:border-[#e4e7ec] [&_[data-slot=textarea]:disabled]:bg-[#f2f4f7] [&_[data-slot=textarea]:disabled]:text-[#667085] [&_[data-slot=textarea]:disabled]:opacity-100 [&_[data-slot=textarea]:focus-visible]:border-[#08783e] [&_[data-slot=textarea]:focus-visible]:ring-[#08783e]/15"
+            className="grid min-w-0 max-w-full gap-3 text-[#101828] sm:gap-4 [&_[data-slot=input]]:min-w-0 [&_[data-slot=input]]:max-w-full [&_[data-slot=input]]:border-[#d0d5dd] [&_[data-slot=input]]:bg-white [&_[data-slot=input]]:text-[#101828] [&_[data-slot=input]]:placeholder:text-[#667085] [&_[data-slot=input]:disabled]:border-[#e4e7ec] [&_[data-slot=input]:disabled]:bg-[#f2f4f7] [&_[data-slot=input]:disabled]:text-[#667085] [&_[data-slot=input]:disabled]:opacity-100 [&_[data-slot=input]:focus-visible]:border-[#08783e] [&_[data-slot=input]:focus-visible]:ring-[#08783e]/15 [&_[data-slot=textarea]]:min-w-0 [&_[data-slot=textarea]]:max-w-full [&_[data-slot=textarea]]:border-[#d0d5dd] [&_[data-slot=textarea]]:bg-white [&_[data-slot=textarea]]:text-[#101828] [&_[data-slot=textarea]]:placeholder:text-[#667085] [&_[data-slot=textarea]:disabled]:border-[#e4e7ec] [&_[data-slot=textarea]:disabled]:bg-[#f2f4f7] [&_[data-slot=textarea]:disabled]:text-[#667085] [&_[data-slot=textarea]:disabled]:opacity-100 [&_[data-slot=textarea]:focus-visible]:border-[#08783e] [&_[data-slot=textarea]:focus-visible]:ring-[#08783e]/15"
           >
-            <div className="grid grid-cols-3 gap-2 rounded-[var(--broker-radius-md)] border border-[#e4e7ec] bg-[#f2f4f7] p-1.5">
+            <div className="grid min-w-0 max-w-full grid-cols-3 gap-1 rounded-[var(--broker-radius-md)] border border-[#e4e7ec] bg-[#f2f4f7] p-1 sm:gap-2 sm:p-1.5">
               {(["income", "expense", "commission"] as EntryType[]).map((entryType) => (
                 <button
                   key={entryType}
                   type="button"
                   onClick={() => changeEntryType(entryType)}
-                  className={`rounded-xl px-2 py-2 text-sm font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#08783e]/25 ${draft.entryType === entryType ? "bg-white text-[#101828] shadow-sm ring-1 ring-black/[0.05]" : "text-[#475467] hover:bg-white/70 hover:text-[#101828]"}`}
+                  className={`min-w-0 rounded-xl px-1 py-2 text-[11px] font-semibold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#08783e]/25 sm:px-2 sm:text-sm ${draft.entryType === entryType ? "bg-white text-[#101828] shadow-sm ring-1 ring-black/[0.05]" : "text-[#475467] hover:bg-white/70 hover:text-[#101828]"}`}
                 >
                   {entryType === "income" ? "Recebimento" : entryType === "expense" ? "Despesa" : "Comissão"}
                 </button>
@@ -621,7 +621,7 @@ export function BrokerFinancialPage() {
       </Dialog>
 
       <Dialog open={accountDialogOpen} onOpenChange={setAccountDialogOpen}>
-        <DialogContent className="rounded-[var(--broker-radius-lg)] border-[#d0d5dd] bg-white text-[#101828] sm:max-w-lg [&_[data-slot=dialog-close]]:text-[#475467] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]:hover]:bg-[#f2f4f7] [&_[data-slot=dialog-close]:hover]:text-[#101828]">
+        <DialogContent className="max-h-[calc(100dvh-1.5rem)] max-w-[calc(100%-1.5rem)] overflow-y-auto rounded-[var(--broker-radius-lg)] border-[#d0d5dd] bg-white p-4 text-[#101828] sm:max-w-lg sm:p-6 [&_[data-slot=dialog-close]]:text-[#475467] [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]:hover]:bg-[#f2f4f7] [&_[data-slot=dialog-close]:hover]:text-[#101828]">
           <DialogHeader className="gap-1.5 pr-8">
             <DialogTitle className="text-xl font-semibold leading-tight tracking-[-0.02em] text-[#101828]">Nova conta</DialogTitle>
             <DialogDescription className="text-sm leading-6 text-[#475467]">Cadastre apenas uma referência operacional. Nenhum dado bancário será conectado.</DialogDescription>
@@ -674,27 +674,27 @@ function SummaryView({ data }: { data: FinancialSnapshot }) {
 
   return (
     <>
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
+      <section className="grid min-w-0 max-w-full grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-3 2xl:grid-cols-6">
         {metrics.map((metric) => <MetricCard key={metric.label} {...metric} />)}
       </section>
-      <section className="grid gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
+      <section className="grid min-w-0 max-w-full gap-3 sm:gap-4 xl:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)]">
         <PortfolioCard portfolio={data.portfolio} />
         <UpcomingCard upcoming={data.upcoming} />
       </section>
       <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-        <CardHeader className="px-4 py-4 sm:px-5">
+        <CardHeader className="px-3 py-3 sm:px-5 sm:py-4">
           <CardTitle className="flex items-center gap-2 text-base"><ReceiptText className="size-4 text-[var(--broker-accent)]" />Últimos lançamentos</CardTitle>
         </CardHeader>
-        <CardContent className="grid gap-2 px-4 pb-4 sm:px-5">
+        <CardContent className="grid gap-2 px-3 pb-3 sm:px-5 sm:pb-4">
           {[...data.receipts].sort((left, right) => new Date(right.dueDate).getTime() - new Date(left.dueDate).getTime()).slice(0, 5).map((item) => (
-            <div key={`${item.source}-${item.id}`} className="flex flex-col gap-2 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3.5 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <div key={`${item.source}-${item.id}`} className="flex min-w-0 max-w-full flex-col gap-2 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between sm:px-3.5 sm:py-3">
               <div className="min-w-0">
                 <p className="truncate text-sm font-medium text-[var(--broker-ink)]">{item.description}</p>
                 <p className="mt-0.5 truncate text-xs text-[var(--broker-muted)]">{item.client?.name ?? "Sem cliente"} · {formatDate(item.dueDate)}</p>
               </div>
-              <div className="flex items-center justify-between gap-3 sm:justify-end">
+              <div className="flex min-w-0 flex-wrap items-center justify-between gap-2 sm:justify-end sm:gap-3">
                 <StatusBadge status={item.status} />
-                <span className="text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(item.amount)}</span>
+                <span className="shrink-0 text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(item.amount)}</span>
               </div>
             </div>
           ))}
@@ -708,18 +708,18 @@ function SummaryView({ data }: { data: FinancialSnapshot }) {
 function AccountsCard({ accounts }: { accounts: FinancialSnapshot["accounts"] }) {
   return (
     <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-      <CardHeader className="px-4 py-4 sm:px-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <CardHeader className="px-3 py-3 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base"><WalletCards className="size-4 text-[var(--broker-accent)]" />Contas</CardTitle>
             <p className="mt-1 text-xs leading-5 text-[var(--broker-muted)]">Saldo inicial + recebimentos recebidos − despesas pagas.</p>
           </div>
           <Badge variant="outline" className="border-[var(--broker-border)] bg-white text-[var(--broker-muted)]">{accounts.items.length}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-2 px-4 pb-4 sm:px-5">
+      <CardContent className="grid gap-2 px-3 pb-3 sm:px-5 sm:pb-4">
         {accounts.items.map((account) => (
-          <div key={account.id} className="flex items-center justify-between gap-4 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3.5 py-3">
+          <div key={account.id} className="flex min-w-0 max-w-full items-center justify-between gap-3 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] px-3 py-2.5 sm:gap-4 sm:px-3.5 sm:py-3">
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{account.bank}</p>
               <p className="mt-0.5 truncate text-xs text-[var(--broker-muted)]">{account.name} · {accountTypeLabels[account.type]}</p>
@@ -728,7 +728,7 @@ function AccountsCard({ accounts }: { accounts: FinancialSnapshot["accounts"] })
           </div>
         ))}
         {accounts.items.length === 0 ? <EmptyState message="Nenhuma conta cadastrada. Os lançamentos continuam funcionando sem conta vinculada." /> : null}
-        <div className="mt-1 flex items-center justify-between gap-4 border-t border-[var(--broker-border)] px-1 pt-3">
+        <div className="mt-1 flex min-w-0 flex-wrap items-center justify-between gap-2 border-t border-[var(--broker-border)] px-1 pt-3 sm:gap-4">
           <span className="text-sm font-medium text-[var(--broker-muted)]">Total em contas</span>
           <span className={`text-base font-semibold ${accounts.totalBalance < 0 ? "text-rose-700" : "text-[var(--broker-ink)]"}`}>{formatCurrencyBRLFromCents(accounts.totalBalance)}</span>
         </div>
@@ -747,11 +747,11 @@ function MetricCard({ label, value, icon: Icon, tone }: { label: string; value: 
   }
   return (
     <Card className="rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-      <CardContent className="flex items-start gap-3 p-4">
-        <div className={`flex size-9 shrink-0 items-center justify-center rounded-xl ${tones[tone]}`}><Icon className="size-4" /></div>
+      <CardContent className="flex min-w-0 items-start gap-2 p-2.5 sm:gap-3 sm:p-4">
+        <div className={`flex size-8 shrink-0 items-center justify-center rounded-lg sm:size-9 sm:rounded-xl ${tones[tone]}`}><Icon className="size-3.5 sm:size-4" /></div>
         <div className="min-w-0">
-          <p className="text-xs text-[var(--broker-muted)]">{label}</p>
-          <p className="mt-1 break-words text-base font-semibold tracking-[-0.02em] text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(value)}</p>
+          <p className="text-[11px] leading-4 text-[var(--broker-muted)] sm:text-xs">{label}</p>
+          <p className="mt-0.5 break-words text-[13px] font-semibold leading-4 tracking-[-0.02em] text-[var(--broker-ink)] sm:mt-1 sm:text-base sm:leading-normal">{formatCurrencyBRLFromCents(value)}</p>
         </div>
       </CardContent>
     </Card>
@@ -766,27 +766,27 @@ function PortfolioCard({ portfolio }: { portfolio: FinancialSnapshot["portfolio"
   ]
   return (
     <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-      <CardHeader className="px-4 py-4 sm:px-5">
-        <div className="flex items-start justify-between gap-4">
-          <div>
+      <CardHeader className="px-3 py-3 sm:px-5 sm:py-4">
+        <div className="flex min-w-0 items-start justify-between gap-3 sm:gap-4">
+          <div className="min-w-0">
             <CardTitle className="flex items-center gap-2 text-base"><Building2 className="size-4 text-[var(--broker-accent)]" />Carteira ativa</CardTitle>
             <p className="mt-1 text-xs leading-5 text-[var(--broker-muted)]">Indicador operacional. Não compõe receita nem resultado.</p>
           </div>
           <Badge variant="outline" className="border-[var(--broker-border)] bg-white text-[var(--broker-muted)]">{portfolio.totalProperties} {portfolio.totalProperties === 1 ? "imóvel" : "imóveis"}</Badge>
         </div>
       </CardHeader>
-      <CardContent className="grid gap-3 px-4 pb-4 sm:px-5">
+      <CardContent className="grid gap-2.5 px-3 pb-3 sm:gap-3 sm:px-5 sm:pb-4">
         <div>
-          <p className="text-2xl font-semibold tracking-[-0.035em] text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(portfolio.totalValue)}</p>
+          <p className="break-words text-xl font-semibold tracking-[-0.035em] text-[var(--broker-ink)] sm:text-2xl">{formatCurrencyBRLFromCents(portfolio.totalValue)}</p>
           <p className="mt-1 text-xs text-[var(--broker-muted)]">{portfolio.activeProperties} imóveis em carteira ativa</p>
           {portfolio.unpricedProperties > 0 ? <p className="mt-1 text-xs text-amber-700">{portfolio.unpricedProperties} {portfolio.unpricedProperties === 1 ? "imóvel sem valor informado" : "imóveis sem valor informado"}; não incluído na soma.</p> : null}
         </div>
-        <div className="grid gap-2 sm:grid-cols-3">
+        <div className="grid min-w-0 grid-cols-3 gap-1.5 sm:gap-2">
           {groups.map(({ label, icon: Icon, data }) => (
-            <div key={label} className="rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3">
-              <div className="flex items-center gap-2 text-xs text-[var(--broker-muted)]"><Icon className="size-3.5" />{label}</div>
-              <p className="mt-2 text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(data.value)}</p>
-              <p className="mt-0.5 text-xs text-[var(--broker-muted-soft)]">{data.count} {data.count === 1 ? "imóvel" : "imóveis"}{data.unpricedCount > 0 ? ` · ${data.unpricedCount} sem valor` : ""}</p>
+            <div key={label} className="min-w-0 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-2 sm:p-3">
+              <div className="flex min-w-0 items-start gap-1 text-[10px] leading-4 text-[var(--broker-muted)] sm:items-center sm:gap-2 sm:text-xs"><Icon className="mt-0.5 size-3 shrink-0 sm:mt-0 sm:size-3.5" /><span>{label}</span></div>
+              <p className="mt-1.5 break-words text-[11px] font-semibold leading-4 text-[var(--broker-ink)] sm:mt-2 sm:text-sm sm:leading-normal">{formatCurrencyBRLFromCents(data.value)}</p>
+              <p className="mt-0.5 break-words text-[10px] leading-4 text-[var(--broker-muted-soft)] sm:text-xs">{data.count} {data.count === 1 ? "imóvel" : "imóveis"}{data.unpricedCount > 0 ? ` · ${data.unpricedCount} sem valor` : ""}</p>
             </div>
           ))}
         </div>
@@ -803,17 +803,17 @@ function UpcomingCard({ upcoming }: { upcoming: FinancialSnapshot["upcoming"] })
   ]
   return (
     <Card className="rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-      <CardHeader className="px-4 py-4 sm:px-5">
+      <CardHeader className="px-3 py-3 sm:px-5 sm:py-4">
         <CardTitle className="flex items-center gap-2 text-base"><CalendarClock className="size-4 text-[var(--broker-accent)]" />Próximos recebimentos</CardTitle>
       </CardHeader>
-      <CardContent className="grid gap-2 px-4 pb-4 sm:px-5">
+      <CardContent className="grid gap-2 px-3 pb-3 sm:px-5 sm:pb-4">
         {groups.map((group) => (
-          <div key={group.label} className="flex items-center justify-between gap-3 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-3">
-            <div className="flex items-center gap-2.5">
-              <span className={`flex size-8 items-center justify-center rounded-lg ${group.tone}`}><Clock3 className="size-3.5" /></span>
-              <div><p className="text-sm font-medium text-[var(--broker-ink)]">{group.label}</p><p className="text-xs text-[var(--broker-muted)]">{group.items.length} lançamento(s)</p></div>
+          <div key={group.label} className="flex min-w-0 max-w-full items-center justify-between gap-2 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-[var(--broker-surface-subtle)] p-2.5 sm:gap-3 sm:p-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-2.5">
+              <span className={`flex size-7 shrink-0 items-center justify-center rounded-lg sm:size-8 ${group.tone}`}><Clock3 className="size-3.5" /></span>
+              <div className="min-w-0"><p className="text-xs font-medium leading-4 text-[var(--broker-ink)] sm:text-sm">{group.label}</p><p className="text-[10px] text-[var(--broker-muted)] sm:text-xs">{group.items.length} lançamento(s)</p></div>
             </div>
-            <span className="text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(total(group.items))}</span>
+            <span className="shrink-0 text-xs font-semibold text-[var(--broker-ink)] sm:text-sm">{formatCurrencyBRLFromCents(total(group.items))}</span>
           </div>
         ))}
       </CardContent>
@@ -827,10 +827,10 @@ function ReceiptList({ items, updatingId, onReceive }: { items: ReceiptItem[]; u
     <div className="grid gap-2.5">
       {items.map((item) => (
         <Card key={`${item.source}-${item.id}`} className="rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-          <CardContent className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] lg:items-center">
+          <CardContent className="grid min-w-0 max-w-full gap-2.5 p-3 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] lg:items-center">
             <div className="min-w-0">
               <div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.description}</p><StatusBadge status={item.status} /></div>
-              <p className="mt-1 text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.source === "RENTAL_PAYMENT" ? " · Integrado da locação" : ""}{item.account ? ` · Conta: ${item.account.bank} · ${item.account.name}` : ""}</p>
+              <p className="mt-1 break-words text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.source === "RENTAL_PAYMENT" ? " · Integrado da locação" : ""}{item.account ? ` · Conta: ${item.account.bank} · ${item.account.name}` : ""}</p>
             </div>
             <div className="min-w-0 text-xs text-[var(--broker-muted)]"><p className="truncate">{item.client?.name ?? "Sem cliente"}</p><p className="mt-1 truncate">{item.property?.title ?? "Sem imóvel"}</p></div>
             <div className="text-left lg:text-right"><p className="text-sm font-semibold text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(item.amount)}</p><p className="mt-1 text-xs text-[var(--broker-muted)]">Previsto {formatDate(item.dueDate)}</p></div>
@@ -850,8 +850,8 @@ function ExpenseList({ items, updatingId, onPay }: { items: ExpenseItem[]; updat
     <div className="grid gap-2.5">
       {items.map((item) => (
         <Card key={item.id} className="rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-          <CardContent className="grid gap-3 p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] lg:items-center">
-            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.description}</p><StatusBadge status={item.status} /></div><p className="mt-1 text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.account ? ` · Conta: ${item.account.bank} · ${item.account.name}` : ""}</p></div>
+          <CardContent className="grid min-w-0 max-w-full gap-2.5 p-3 sm:gap-3 sm:p-4 lg:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_auto_auto] lg:items-center">
+            <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.description}</p><StatusBadge status={item.status} /></div><p className="mt-1 break-words text-xs text-[var(--broker-muted)]">{categoryLabels[item.category] ?? item.category}{item.account ? ` · Conta: ${item.account.bank} · ${item.account.name}` : ""}</p></div>
             <div className="min-w-0 text-xs text-[var(--broker-muted)]"><p className="truncate">{item.client?.name ?? "Sem cliente vinculado"}</p><p className="mt-1 truncate">{item.property?.title ?? "Sem imóvel vinculado"}</p></div>
             <div className="text-left lg:text-right"><p className="text-sm font-semibold text-rose-700">{formatCurrencyBRLFromCents(item.amount)}</p><p className="mt-1 text-xs text-[var(--broker-muted)]">{formatDate(item.date)}</p></div>
             {item.status !== "PAID" ? (
@@ -870,7 +870,7 @@ function CommissionList({ items, updatingId, onReceive }: { items: CommissionIte
     <div className="grid gap-2.5">
       {items.map((item) => (
         <Card key={item.id} className="rounded-[var(--broker-radius-md)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow-xs)]">
-          <CardContent className="grid gap-3 p-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-center">
+          <CardContent className="grid min-w-0 max-w-full gap-2.5 p-3 sm:gap-3 sm:p-4 xl:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)_minmax(0,1fr)_auto] xl:items-center">
             <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><p className="truncate text-sm font-semibold text-[var(--broker-ink)]">{item.property?.title ?? "Imóvel não disponível"}</p><StatusBadge status={item.status} /></div><p className="mt-1 truncate text-xs text-[var(--broker-muted)]">{item.client?.name ?? "Cliente não disponível"}</p></div>
             <div className="text-xs text-[var(--broker-muted)]"><p>Operação: <span className="font-medium text-[var(--broker-ink)]">{formatCurrencyBRLFromCents(item.operationAmount)}</span></p><p className="mt-1">Percentual: <span className="font-medium text-[var(--broker-ink)]">{item.commissionPercent.toLocaleString("pt-BR")}%</span></p></div>
             <div><p className="text-base font-semibold text-emerald-700">{formatCurrencyBRLFromCents(item.commissionAmount)}</p><p className="mt-1 text-xs text-[var(--broker-muted)]">Previsão {formatDate(item.dueDate)}</p></div>
@@ -897,9 +897,9 @@ function StatusBadge({ status }: { status: string }) {
 
 function SectionHeader({ title, description, action, onAction }: { title: string; description: string; action: string; onAction: () => void }) {
   return (
-    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-      <div><h2 className="text-lg font-semibold text-[var(--broker-ink)]">{title}</h2><p className="mt-1 text-sm text-[var(--broker-muted)]">{description}</p></div>
-      <Button type="button" onClick={onAction} className="self-start bg-[var(--broker-accent)] text-white hover:bg-[#008633]"><Plus className="size-4" />{action}</Button>
+    <div className="flex min-w-0 max-w-full flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
+      <div className="min-w-0"><h2 className="text-base font-semibold text-[var(--broker-ink)] sm:text-lg">{title}</h2><p className="mt-1 break-words text-xs leading-5 text-[var(--broker-muted)] sm:text-sm">{description}</p></div>
+      <Button type="button" onClick={onAction} className="h-9 self-start px-3 text-xs bg-[var(--broker-accent)] text-white hover:bg-[#008633] sm:text-sm"><Plus className="size-4" />{action}</Button>
     </div>
   )
 }
@@ -917,11 +917,11 @@ function NativeSelect({ value, onChange, required, children }: { value: string; 
 }
 
 function EmptyState({ message }: { message: string }) {
-  return <div className="rounded-[var(--broker-radius-sm)] border border-dashed border-[var(--broker-border-strong)] bg-[var(--broker-surface-subtle)] p-5 text-center text-sm text-[var(--broker-muted)]">{message}</div>
+  return <div className="min-w-0 max-w-full rounded-[var(--broker-radius-sm)] border border-dashed border-[var(--broker-border-strong)] bg-[var(--broker-surface-subtle)] p-4 text-center text-xs leading-5 text-[var(--broker-muted)] sm:p-5 sm:text-sm">{message}</div>
 }
 
 function EmptyCard({ message }: { message: string }) {
-  return <Card className="rounded-[var(--broker-radius-lg)] border-dashed border-[var(--broker-border-strong)] bg-[var(--broker-surface)] py-0"><CardContent className="p-8"><EmptyState message={message} /></CardContent></Card>
+  return <Card className="min-w-0 max-w-full rounded-[var(--broker-radius-lg)] border-dashed border-[var(--broker-border-strong)] bg-[var(--broker-surface)] py-0"><CardContent className="p-3 sm:p-8"><EmptyState message={message} /></CardContent></Card>
 }
 
 function FinancialLoading() {

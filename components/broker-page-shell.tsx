@@ -87,7 +87,7 @@ export function BrokerPageShell({
       <div
         className={`broker-portal-scope pwa-safe-shell relative w-full overflow-hidden text-[var(--broker-ink)] ${
           isCosVariant
-            ? "h-full min-h-0 bg-[#f4f1eb]"
+            ? "h-full min-h-0 bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)] md:bg-none md:bg-[#f4f1eb]"
             : "min-h-svh bg-[var(--broker-canvas)]"
         }`}
       >
@@ -167,7 +167,7 @@ export function BrokerPageShell({
               </div>
             </header>
           ) : (
-            <div className="shrink-0 px-3 pb-1.5 pt-2.5 md:hidden">
+            <div className="shrink-0 bg-transparent px-4 pb-2 pt-2.5 md:hidden">
               <SidebarTrigger className="size-9 rounded-[var(--broker-radius-sm)] border border-[var(--broker-border)] bg-white text-[var(--broker-muted)] shadow-[var(--broker-shadow-xs)] hover:bg-white hover:text-[var(--broker-ink)]" />
             </div>
           )}

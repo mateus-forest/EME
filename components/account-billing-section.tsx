@@ -199,7 +199,7 @@ export function AccountBillingSection() {
     }
   }
 
-  if (isLoading) return <EmeLoading message="Carregando faturamento..." />
+  if (isLoading) return <EmeLoading compact message="Carregando faturamento..." />
 
   if (!billing) {
     return (

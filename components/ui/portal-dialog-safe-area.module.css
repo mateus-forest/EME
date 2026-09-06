@@ -1,0 +1,20 @@
+@media (max-width: 767px) {
+  :global(body:has(.broker-portal-scope)) .content.content {
+    --eme-dialog-safe-top: max(12px, env(safe-area-inset-top, 0px));
+    --eme-dialog-safe-right: max(12px, env(safe-area-inset-right, 0px));
+    --eme-dialog-safe-bottom: max(12px, env(safe-area-inset-bottom, 0px));
+    --eme-dialog-safe-left: max(12px, env(safe-area-inset-left, 0px));
+
+    top: calc(
+      var(--eme-dialog-safe-top) +
+      (100dvh - var(--eme-dialog-safe-top) - var(--eme-dialog-safe-bottom)) / 2
+    );
+    left: calc(
+      var(--eme-dialog-safe-left) +
+      (100vw - var(--eme-dialog-safe-left) - var(--eme-dialog-safe-right)) / 2
+    );
+    width: calc(100vw - var(--eme-dialog-safe-left) - var(--eme-dialog-safe-right));
+    max-height: calc(100dvh - var(--eme-dialog-safe-top) - var(--eme-dialog-safe-bottom));
+    box-sizing: border-box;
+  }
+}
