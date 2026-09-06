@@ -420,7 +420,11 @@ export function ExpandedModulePanel({
     : approvedArtwork
       ? approvedArtwork.width / approvedArtwork.height
       : aspectRatio
-  const imageOnly = approvedArtwork
+  const imageOnly: {
+    variant: "desktop" | "mobile"
+    closeXPercent: number
+    closeYPercent: number
+  } | undefined = approvedArtwork
     ? {
         variant: approvedVariant,
         closeXPercent: (approvedArtwork.closePosition.x / approvedArtwork.width) * 100,
