@@ -56,7 +56,7 @@ function ChannelPreview({ kind }: { kind: keyof typeof channelExamples }) {
         alt={example.alt}
         width={example.width}
         height={example.height}
-        sizes="(min-width: 1024px) 250px, (min-width: 641px) 42vw, calc(100vw - 84px)"
+        sizes="(min-width: 382px) 284px, calc(100vw - 98px)"
         quality={95}
         loading="eager"
       />
@@ -140,7 +140,7 @@ export function ExpandedModulePanel({ module, originEl, onClose }: { module: Eme
     event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
   }
   return <LandingModalShell label={module.name} moduleId={module.id} presentation originEl={originEl} onClose={onClose}>
-    <div className={styles.presentation} data-has-views={Boolean(module.views)}>
+    <div className={`${styles.presentation} ${module.id === "catalogo" || module.id === "marketplace" ? styles.channelPresentation : ""}`} data-has-views={Boolean(module.views)}>
       <div className={styles.intro}>
         <div className={styles.moduleLabel} data-choreography="0"><span><Icon size={27} strokeWidth={1.6} aria-hidden /></span>{module.name}</div>
         {module.views && <div className={styles.tabs} data-choreography="1" role="tablist" aria-label={module.name}>
