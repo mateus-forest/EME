@@ -1,4 +1,5 @@
 import type { EmeModule } from "@/lib/eme-modules"
+import heroMaterial from "./hero-material.module.css"
 
 type ModuleCardContent = Pick<EmeModule, "name" | "description" | "icon">
 
@@ -7,7 +8,6 @@ export function ModuleCard({
   compact = false,
   mobile = false,
   badge,
-  animated = false,
 }: {
   module: ModuleCardContent
   compact?: boolean
@@ -16,14 +16,6 @@ export function ModuleCard({
   animated?: boolean
 }) {
   const Icon = module.icon
-
-  const glassFilter = animated
-    ? mobile
-      ? "blur(10px) saturate(108%)"
-      : "blur(14px) saturate(114%)"
-    : mobile
-      ? "blur(12px) saturate(112%)"
-      : "blur(20px) saturate(116%)"
 
   const frameClass = mobile
     ? "h-[160px] w-[118px] rounded-[20px]"
@@ -35,44 +27,17 @@ export function ModuleCard({
   return (
     <div
       data-module-card={mobile ? "mobile" : "desktop"}
-      className={`eme-landing-glass-card relative select-none ${frameClass}${mobile ? " scale-[0.9]" : ""}`}
+      className={`${heroMaterial.card} relative select-none ${frameClass}${mobile ? " scale-[0.9]" : ""}`}
       style={{
         backfaceVisibility: mobile ? "hidden" : undefined,
         WebkitBackfaceVisibility: mobile ? "hidden" : undefined,
         transform: mobile ? "translateZ(0)" : undefined,
-        boxShadow: mobile
-          ? "0 20px 42px -24px rgba(20,45,32,0.38), 0 8px 20px -15px rgba(20,45,32,0.2), inset 0 1px 0 rgba(255,255,255,0.92)"
-          : "0 34px 72px -30px rgba(20,45,32,0.34), 0 13px 30px -20px rgba(20,45,32,0.2), inset 0 1px 0 rgba(255,255,255,0.94)",
       }}
     >
-      {/* True glass fill — translucent (not opaque white) so the busy skyline/pedestal behind
-          each card stays faintly visible through it, blurred into a soft frosted wash. */}
       <div
         aria-hidden
         data-mobile-glass={mobile ? "static" : undefined}
-        className={`eme-landing-glass-card__surface absolute inset-0 overflow-hidden ${radiusClass}`}
-        style={{
-          background:
-            mobile
-              ? "linear-gradient(150deg, rgba(255,255,255,0.76) 0%, rgba(247,251,248,0.6) 58%, rgba(225,239,231,0.48) 100%)"
-              : "linear-gradient(150deg, rgba(255,255,255,0.7) 0%, rgba(247,251,248,0.52) 62%, rgba(225,239,231,0.42) 100%)",
-          border: "1px solid rgba(255,255,255,0.7)",
-          WebkitBackdropFilter: glassFilter,
-          backdropFilter: glassFilter,
-        }}
-      />
-      <div
-        aria-hidden
-        className={`absolute inset-0 ${radiusClass}`}
-        style={{
-          background:
-            "radial-gradient(ellipse at 48% 12%, rgba(255,255,255,0.68) 0%, rgba(255,255,255,0.14) 48%, rgba(205,226,215,0.08) 100%)",
-        }}
-      />
-
-      <div
-        aria-hidden
-        className="absolute inset-x-4 top-[2px] h-[2px] rounded-full bg-white/90 opacity-70 blur-[1px]"
+        className={`${heroMaterial.surface} absolute inset-0 ${radiusClass}`}
       />
 
       <div
@@ -80,7 +45,7 @@ export function ModuleCard({
       >
         {badge ? (
           <span
-            className={`eme-landing-glass-badge absolute left-1/2 -translate-x-1/2 rounded-full border border-eme/10 bg-eme/12 font-semibold uppercase text-eme-dark ${mobile ? "top-2.5 px-2.5 py-px text-[7px] tracking-[0.12em]" : "top-3.5 px-3 py-0.5 text-[9px] tracking-[0.14em]"}`}
+            className={`${heroMaterial.badge} absolute left-1/2 -translate-x-1/2 rounded-full border font-semibold uppercase text-eme-dark ${mobile ? "top-2.5 px-2.5 py-px text-[7px] tracking-[0.12em]" : "top-3.5 px-3 py-0.5 text-[9px] tracking-[0.14em]"}`}
           >
             {badge}
           </span>

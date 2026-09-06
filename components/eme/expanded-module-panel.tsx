@@ -1,455 +1,126 @@
 "use client"
 
-import { useSyncExternalStore } from "react"
+import { useState, type KeyboardEvent } from "react"
 import Image from "next/image"
-import { Calculator, Check, ShieldCheck } from "lucide-react"
-
-import { LandingModalShell } from "@/components/eme/landing-modal-shell"
+import { ArrowUpRight, Check, CalendarDays, FileText, Home, ImageIcon, Users, WalletCards } from "lucide-react"
 import type { EmeModule } from "@/lib/eme-modules"
-import agendaStyles from "./agenda-module-artwork.module.css"
-import mobileStyles from "./mobile-module-artwork.module.css"
-import panelStyles from "./expanded-module-panel.module.css"
+import { LandingModalShell } from "./landing-modal-shell"
+import styles from "./module-presentation.module.css"
 
-type ModuleImageCrop = {
-  sourceWidth: number
-  sourceHeight: number
-  x: number
-  y: number
-  width: number
-  height: number
-}
+const property = { title: "Apartamento com varanda", price: "R$ 350.000", location: "Vacaria · RS", image: "/property-living.png" }
 
-type ApprovedModalArtwork = {
-  src: string
-  width: number
-  height: number
-  closePosition: {
-    x: number
-    y: number
-  }
-}
-
-const MODULE_ASPECT_RATIOS: Record<string, number> = {
-  cos: 1521 / 828,
-  clientes: 1551 / 1014,
-  imoveis: 1536 / 1024,
-  catalogo: 1223 / 816,
-  "studio-ia": 1535 / 1024,
-  propostas: 1536 / 1024,
-  contratos: 1536 / 1024,
-  agenda: 1452 / 941,
-  marketplace: 1522 / 1033,
-  financeiro: 1538 / 851,
-}
-const DEFAULT_ASPECT_RATIO = 1480 / 962
-const COMPACT_MODAL_QUERY = "(max-width: 1023px)"
-const IMAGE_PLACEHOLDER =
-  "data:image/gif;base64,R0lGODlhAQABAAD/ACwAAAAAAQABAAACADs="
-const APPROVED_MODAL_ARTWORKS: Record<
-  "cos" | "financeiro",
-  {
-    desktop: ApprovedModalArtwork
-    mobile: ApprovedModalArtwork
-  }
-> = {
-  cos: {
-    desktop: {
-      src: "/modals/cos-desktop-approved.png",
-      width: 1521,
-      height: 828,
-      closePosition: { x: 1472.5, y: 46.5 },
-    },
-    mobile: {
-      src: "/modals/cos-mobile-approved.png",
-      width: 862,
-      height: 1593,
-      closePosition: { x: 808, y: 59.5 },
-    },
-  },
-  financeiro: {
-    desktop: {
-      src: "/modals/finance-desktop-approved.png",
-      width: 1538,
-      height: 851,
-      closePosition: { x: 1492, y: 47.5 },
-    },
-    mobile: {
-      src: "/modals/finance-mobile-approved.png",
-      width: 828,
-      height: 1580,
-      closePosition: { x: 765.5, y: 62 },
-    },
-  },
-}
-
-const MOBILE_MODULE_ARTWORK_CROPS: Record<string, ModuleImageCrop> = {
-  marketplace: { sourceWidth: 1522, sourceHeight: 1033, x: 55, y: 185, width: 860, height: 650 },
-  clientes: { sourceWidth: 1551, sourceHeight: 1014, x: 50, y: 95, width: 1175, height: 860 },
-  imoveis: { sourceWidth: 1536, sourceHeight: 1024, x: 15, y: 135, width: 930, height: 780 },
-  catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 300, y: 185, width: 690, height: 620 },
-  "studio-ia": { sourceWidth: 1535, sourceHeight: 1024, x: 480, y: 98, width: 1035, height: 865 },
-  propostas: { sourceWidth: 1536, sourceHeight: 1024, x: 325, y: 30, width: 1210, height: 960 },
-  contratos: { sourceWidth: 1536, sourceHeight: 1024, x: 520, y: 135, width: 950, height: 570 },
-  agenda: { sourceWidth: 1452, sourceHeight: 941, x: 60, y: 145, width: 740, height: 660 },
-}
-
-const MOBILE_MODULE_COMPLEMENTS: Partial<Record<string, {
-  title: string
-  description: string
-  icon: EmeModule["icon"]
-}>> = {
-  marketplace: {
-    title: "Segurança e credibilidade",
-    description: "Ambiente seguro, verificado e feito para gerar confiança para você e para o seu cliente.",
-    icon: ShieldCheck,
-  },
-  propostas: {
-    title: "Cálculo automático de financiamento",
-    description: "Simule diferentes cenários de entrada, prazo e taxas para oferecer a melhor opção ao seu cliente com total confiança.",
-    icon: Calculator,
-  },
-  contratos: {
-    title: "Mais segurança",
-    description: "Contratos revisados, claros e prontos para você fechar negócios com tranquilidade.",
-    icon: ShieldCheck,
-  },
-}
-
-const DESKTOP_MODULE_CROPS: Record<string, ModuleImageCrop> = {
-  catalogo: { sourceWidth: 1785, sourceHeight: 881, x: 284, y: 30, width: 1223, height: 816 },
-}
-const AGENDA_DESKTOP_BENEFITS = [
-  "Agendamento rápido de compromissos",
-  "Lembretes automáticos para você e o cliente",
-  "Sincronização com seu calendário",
-  "Acompanhamento claro do que precisa ser feito",
-] as const
-
-function CatalogDemoLink({ module, compact = false }: { module: EmeModule; compact?: boolean }) {
-  if (module.id !== "catalogo" || !module.demoHref || !module.demoLabel) return null
-
-  return (
-    <a
-      href={module.demoHref}
-      target="_blank"
-      rel="noopener noreferrer"
-      className={`${panelStyles.catalogCta}${compact ? ` ${panelStyles.catalogCtaMobile}` : ""}`}
-    >
-      {module.demoLabel}
-      <span aria-hidden="true">↗</span>
-    </a>
-  )
-}
-
-function subscribeToCompactModal(onStoreChange: () => void) {
-  const mediaQuery = window.matchMedia(COMPACT_MODAL_QUERY)
-  mediaQuery.addEventListener("change", onStoreChange)
-  return () => mediaQuery.removeEventListener("change", onStoreChange)
-}
-
-function useCompactModal() {
-  return useSyncExternalStore(
-    subscribeToCompactModal,
-    () => window.matchMedia(COMPACT_MODAL_QUERY).matches,
-    () => false,
-  )
-}
-
-function CroppedModuleImage({
-  src,
-  alt,
-  crop,
-  sizes,
-  className = "",
-  mobileMockup = false,
-  fit = "cover",
-}: {
-  src: string
-  alt: string
-  crop: ModuleImageCrop
-  sizes: string
-  className?: string
-  mobileMockup?: boolean
-  fit?: "cover" | "contain"
-}) {
-  return (
-    <div
-      data-mobile-module-mockup={mobileMockup ? "" : undefined}
-      className={`eme-module-modal-media relative overflow-hidden ${className}`}
-      style={{ aspectRatio: `${crop.width} / ${crop.height}` }}
-    >
-      <Image
-        src={src}
-        alt={alt}
-        width={crop.sourceWidth}
-        height={crop.sourceHeight}
-        sizes={sizes}
-        quality={88}
-        placeholder="blur"
-        blurDataURL={IMAGE_PLACEHOLDER}
-        className="absolute inset-0 h-full w-full max-w-none"
-        style={{
-          left: `${-(crop.x / crop.width) * 100}%`,
-          top: `${-(crop.y / crop.height) * 100}%`,
-          width: `${(crop.sourceWidth / crop.width) * 100}%`,
-          height: `${(crop.sourceHeight / crop.height) * 100}%`,
-          objectFit: fit,
-        }}
-      />
+/** Editorial examples use only fields supported by the product, never live customer data. */
+function PropertyPreview({ channel }: { channel?: string }) {
+  return <div className={styles.preview}>
+    <div className={styles.previewHeader}><span>{channel ?? "Prévia do imóvel"}</span><span className={styles.pill}>{channel ? "Exemplo" : "Rascunho"}</span></div>
+    <Image className={styles.propertyImage} src={property.image} alt="Sala de estar com varanda; imagem ilustrativa" width={1024} height={1024} sizes="(min-width: 1024px) 480px, 90vw" />
+    <div className={styles.previewBody}>
+      <p className={styles.eyebrow}>Apartamento · dados ilustrativos</p>
+      <h3>{property.title}</h3><p>{property.location}</p><strong className={styles.price}>{property.price}</strong>
+      <p className={styles.facts}><span>2 quartos</span><span>1 vaga</span><span>71 m²</span></p>
+      <div className={styles.divider}>
+        <h4>{channel === "Marketplace EME" ? "Descoberta e contato" : channel ? "Sua carteira, sua identidade" : "Publicação"}</h4>
+        <p>{channel === "Marketplace EME" ? "Busque, compare e consulte o corretor responsável." : channel ? "Apresente os imóveis que você escolheu publicar." : "Escolha os canais após revisar a ficha."}</p>
+        {!channel && <div className={styles.pills}><span className={styles.pill}>Catálogo EME</span><span className={styles.pill}>Marketplace EME</span></div>}
+      </div>
     </div>
-  )
+  </div>
 }
 
-function ApprovedModalArtwork({
-  module,
-  artwork,
-  compact,
-}: {
-  module: EmeModule
-  artwork: ApprovedModalArtwork
-  compact: boolean
-}) {
-  return (
-    <Image
-      data-approved-modal-artwork={module.id}
-      data-cos-approved-artwork={
-        module.id === "cos" ? (compact ? "mobile" : "desktop") : undefined
-      }
-      data-finance-approved-artwork={
-        module.id === "financeiro" ? (compact ? "mobile" : "desktop") : undefined
-      }
-      src={artwork.src}
-      alt={`Módulo ${module.name}`}
-      width={artwork.width}
-      height={artwork.height}
-      sizes={compact ? "calc(100vw - 24px)" : "min(1120px, calc(100vw - 64px))"}
-      className="block h-auto w-full object-contain"
-      unoptimized
-    />
-  )
-}
-
-function DesktopModuleArtwork({ module }: { module: EmeModule }) {
-  const crop = DESKTOP_MODULE_CROPS[module.id]
-
-  return (
-    <div data-desktop-module-artwork className="eme-module-modal-artwork relative h-full w-full overflow-hidden">
-      {crop ? (
-        <CroppedModuleImage
-          src={module.mockup || "/placeholder.svg"}
-          alt={`Módulo ${module.name}`}
-          crop={crop}
-          sizes="min(92vw, 1350px)"
-          className="h-full w-full"
-        />
-      ) : (
-        <Image
-          src={module.mockup || "/placeholder.svg"}
-          alt={`Módulo ${module.name}`}
-          fill
-          sizes="min(92vw, 1350px)"
-          quality={88}
-          placeholder="blur"
-          blurDataURL={IMAGE_PLACEHOLDER}
-          className="object-cover"
-        />
-      )}
-
-      {module.id === "marketplace" && module.demoHref ? (
-        <a
-          href={module.demoHref}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label="Ver exemplo no Marketplace — Abrir demonstração"
-          className="absolute bottom-[3.2%] left-[64.1%] h-[10.7%] w-[23.1%] rounded-[18px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-eme focus-visible:ring-offset-2"
-        />
-      ) : null}
-
-      <CatalogDemoLink module={module} />
+function ClientPreview() {
+  return <div className={styles.preview}>
+    <div className={styles.previewHeader}><span>Atendimento e agenda</span><Users size={20} aria-hidden /></div>
+    <div className={styles.previewBody}>
+      <p className={styles.eyebrow}>Cadastro ilustrativo</p>
+      <h3>Cliente de exemplo</h3><span className={styles.pill}>Em atendimento</span>
+      <dl className={styles.fields}><div><dt>Interesse</dt><dd>Apartamento com varanda</dd></div><div><dt>Observações</dt><dd>Revisar as opções da carteira.</dd></div></dl>
+      <div className={styles.divider}><h4><CalendarDays size={18} aria-hidden /> Próximos compromissos</h4>
+        <ul className={styles.rows}><li><time>10:00</time><div><strong>Visita ao imóvel</strong><span>Compromisso registrado na agenda</span></div></li><li><time>15:00</time><div><strong>Revisar documentos</strong><span>Tarefa pendente</span></div></li></ul>
+      </div>
+      <p className={styles.small}>Os compromissos são cadastrados pelo corretor, sem vínculo automático presumido.</p>
     </div>
-  )
+  </div>
 }
 
-function AgendaModuleArtwork({ module }: { module: EmeModule }) {
-  const ModuleIcon = module.icon
-  const mockupCrop = MOBILE_MODULE_ARTWORK_CROPS.agenda
-
-  return (
-    <article
-      data-agenda-modal-layout
-      data-desktop-module-artwork
-      className={agendaStyles.layout}
-    >
-      <div className={agendaStyles.visual}>
-        <CroppedModuleImage
-          src={module.mockup || "/placeholder.svg"}
-          alt={`Prévia visual do módulo ${module.name}`}
-          crop={mockupCrop}
-          sizes="(min-width: 1024px) 58vw, calc(100vw - 60px)"
-          className={agendaStyles.mockup}
-          fit="contain"
-        />
-      </div>
-
-      <div className={agendaStyles.content}>
-        <div className={agendaStyles.eyebrow}>
-          <span className={agendaStyles.eyebrowIcon} aria-hidden="true">
-            <ModuleIcon className="size-5" strokeWidth={1.8} />
-          </span>
-          <span>{module.name}</span>
-        </div>
-
-        <h2 className={agendaStyles.title}>{module.tagline}</h2>
-        <p className={agendaStyles.description}>{module.longDescription}</p>
-
-        <ul className={agendaStyles.benefits} aria-label={`Benefícios de ${module.name}`}>
-          {AGENDA_DESKTOP_BENEFITS.map((benefit) => (
-            <li key={benefit} className={agendaStyles.benefit}>
-              <span className={agendaStyles.benefitIcon} aria-hidden="true">
-                <Check className="size-3.5" strokeWidth={2.25} />
-              </span>
-              <span className={agendaStyles.benefitTitle}>{benefit}</span>
-            </li>
-          ))}
-        </ul>
-      </div>
-    </article>
-  )
+function DocumentPreview({ contract }: { contract: boolean }) {
+  return <div className={styles.preview}>
+    <div className={styles.previewHeader}><span>{contract ? "Preparação do contrato" : "Preparação da proposta"}</span><FileText size={20} aria-hidden /></div>
+    <div className={styles.previewBody}>
+      <p className={styles.eyebrow}>Exemplo de preenchimento</p>
+      <h3>{contract ? "Modelo para revisão" : "Proposta de compra"}</h3><span className={styles.pill}>Rascunho</span>
+      <dl className={styles.fields}>
+        <div><dt>{contract ? "Modelo" : "Cliente"}</dt><dd>{contract ? "Contrato do corretor" : "Cliente de exemplo"}</dd></div>
+        <div><dt>Imóvel</dt><dd>{property.title}</dd></div>
+        <div><dt>Valor informado</dt><dd>{property.price}</dd></div>
+        <div><dt>{contract ? "Campos do documento" : "Condições de pagamento"}</dt><dd>A revisar antes de concluir</dd></div>
+      </dl>
+      <div className={styles.divider}><h4>Revisão antes da entrega</h4><p>{contract ? "Complete os campos para gerar o PDF final. O conteúdo jurídico deve ser revisado por você." : "Confira os dados e as condições antes de gerar e compartilhar o documento."}</p></div>
+    </div>
+  </div>
 }
 
-function MobileModuleArtwork({ module }: { module: EmeModule }) {
-  const ModuleIcon = module.icon
-  const artworkCrop = MOBILE_MODULE_ARTWORK_CROPS[module.id]
-  const complement = MOBILE_MODULE_COMPLEMENTS[module.id]
-  const ComplementIcon = complement?.icon
-  const moduleLabel = module.id === "marketplace"
-    ? `${module.name} EME`
-    : module.name
-
-  return (
-    <article
-      data-mobile-module-scroll
-      data-mobile-module-layout
-      className={`${mobileStyles.layout} eme-hidden-scrollbar`}
-    >
-      <div data-mobile-module-label className={mobileStyles.eyebrow}>
-        <span className={mobileStyles.eyebrowIcon} aria-hidden="true">
-          <ModuleIcon className="size-5" strokeWidth={1.7} />
-        </span>
-        <span>{moduleLabel}</span>
-      </div>
-
-      <h2 data-mobile-module-title className={mobileStyles.title}>{module.tagline}</h2>
-      <p data-mobile-module-description className={mobileStyles.description}>{module.longDescription}</p>
-
-      {artworkCrop ? (
-        <CroppedModuleImage
-          src={module.mockup || "/placeholder.svg"}
-          alt={`Prévia visual do módulo ${module.name}`}
-          crop={artworkCrop}
-          sizes="calc(100vw - 60px)"
-          className={mobileStyles.mockup}
-          mobileMockup
-          fit="contain"
-        />
-      ) : null}
-
-      <ul
-        data-mobile-module-benefits
-        className={mobileStyles.benefits}
-        aria-label={`Benefícios de ${module.name}`}
-      >
-        {module.benefits.map((benefit) => {
-          const title = typeof benefit === "string" ? benefit : benefit.title
-          const description = typeof benefit === "string" ? null : benefit.description
-
-          return (
-            <li key={title} className={mobileStyles.benefit}>
-              <span className={mobileStyles.benefitIcon} aria-hidden="true">
-                <Check className="size-3.5" strokeWidth={2.2} />
-              </span>
-              <span className={mobileStyles.benefitCopy}>
-                <span className={mobileStyles.benefitTitle}>{title}</span>
-                {description ? (
-                  <span className={mobileStyles.benefitDescription}>{description}</span>
-                ) : null}
-              </span>
-            </li>
-          )
-        })}
+function FinancePreview() {
+  return <div className={styles.preview}>
+    <div className={styles.previewHeader}><span>Recebimentos</span><WalletCards size={20} aria-hidden /></div>
+    <div className={styles.previewBody}>
+      <p className={styles.eyebrow}>Exemplo de controle operacional</p>
+      <div className={styles.financeTotals}><div><span>Recebido</span><strong>R$ 7.200</strong></div><div><span>A receber</span><strong>R$ 4.500</strong></div></div>
+      <ul className={styles.receipts}>
+        <li><div><strong>Locação</strong><span className={styles.received}>Recebido</span></div><b>R$ 7.200</b></li>
+        <li><div><strong>Comissão</strong><span className={styles.expected}>Previsto</span></div><b>R$ 3.000</b></li>
+        <li><div><strong>Honorários</strong><span className={styles.overdue}>Atrasado</span></div><b>R$ 1.500</b></li>
       </ul>
-
-      <CatalogDemoLink module={module} compact />
-
-      {complement && ComplementIcon ? (
-        <div className={mobileStyles.complement} data-mobile-module-complement>
-          <span className={mobileStyles.complementIcon} aria-hidden="true">
-            <ComplementIcon className="size-8" strokeWidth={1.6} />
-          </span>
-          <div>
-            <p className={mobileStyles.complementTitle}>{complement.title}</p>
-            <p className={mobileStyles.complementDescription}>{complement.description}</p>
-          </div>
-        </div>
-      ) : null}
-    </article>
-  )
+      <div className={styles.divider}><h4><Home size={18} aria-hidden /> Valor da carteira</h4><strong className={styles.price}>{property.price}</strong><p>1 imóvel ilustrativo. Indicador operacional: não compõe receita nem resultado.</p></div>
+    </div>
+  </div>
 }
 
-export function ExpandedModulePanel({
-  module,
-  originEl,
-  onClose,
-}: {
-  module: EmeModule
-  originEl: HTMLElement
-  onClose: () => void
-}) {
-  const compact = useCompactModal()
-  const aspectRatio = MODULE_ASPECT_RATIOS[module.id] ?? DEFAULT_ASPECT_RATIO
-  const isAgenda = module.id === "agenda"
-  const approvedModuleId = module.id === "cos" || module.id === "financeiro"
-    ? module.id
-    : null
-  const approvedVariant = compact ? "mobile" : "desktop"
-  const approvedArtwork = approvedModuleId
-    ? APPROVED_MODAL_ARTWORKS[approvedModuleId][approvedVariant]
-    : null
-  const modalAspectRatio = isAgenda
-    ? undefined
-    : approvedArtwork
-      ? approvedArtwork.width / approvedArtwork.height
-      : aspectRatio
-  const imageOnly: {
-    variant: "desktop" | "mobile"
-    closeXPercent: number
-    closeYPercent: number
-  } | undefined = approvedArtwork
-    ? {
-        variant: approvedVariant,
-        closeXPercent: (approvedArtwork.closePosition.x / approvedArtwork.width) * 100,
-        closeYPercent: (approvedArtwork.closePosition.y / approvedArtwork.height) * 100,
-      }
-    : undefined
+function StudioPreview() {
+  return <div className={styles.preview}>
+    <div className={styles.previewHeader}><span>Preparar imóvel</span><ImageIcon size={20} aria-hidden /></div>
+    <Image className={styles.studioImage} src="/property-raw.png" alt="Imagem de um ambiente vazio, usada para ilustrar a etapa de envio" width={1024} height={1024} sizes="(min-width: 1024px) 480px, 90vw" />
+    <div className={styles.previewBody}><p className={styles.eyebrow}>Imagem de entrada · exemplo ilustrativo</p><h3>Do original à sua revisão</h3>
+      <ol className={styles.steps}><li>Escolha a imagem e a preparação.</li><li>Gere e compare com o original.</li><li>Revise e aprove na Biblioteca.</li></ol>
+      <p className={styles.small}>Esta demonstração mostra a etapa de entrada, não um resultado gerado. Cada resultado precisa ser conferido.</p>
+    </div>
+  </div>
+}
 
-  return (
-    <LandingModalShell
-      label={module.name}
-      moduleId={module.id}
-      aspectRatio={modalAspectRatio}
-      imageOnly={imageOnly}
-      originEl={originEl}
-      onClose={onClose}
-    >
-      {approvedArtwork ? (
-        <ApprovedModalArtwork module={module} artwork={approvedArtwork} compact={compact} />
-      ) : compact ? (
-        <MobileModuleArtwork module={module} />
-      ) : isAgenda ? (
-        <AgendaModuleArtwork module={module} />
-      ) : (
-        <DesktopModuleArtwork module={module} />
-      )}
-    </LandingModalShell>
-  )
+export function ExpandedModulePanel({ module, originEl, onClose }: { module: EmeModule; originEl?: HTMLElement | null; onClose: () => void }) {
+  const [viewIndex, setViewIndex] = useState(0)
+  const view = module.views?.[viewIndex]
+  const Icon = module.icon
+  const benefits = view?.benefits ?? module.benefits
+  const activeId = view?.id ?? module.id
+  const href = view?.href ?? module.demoHref
+  const action = view?.action ?? module.demoLabel
+  const selectTab = (event: KeyboardEvent<HTMLButtonElement>, index: number) => {
+    const count = module.views?.length ?? 0
+    const next = event.key === "Home" ? 0 : event.key === "End" ? count - 1 : event.key === "ArrowRight" ? (index + 1) % count : event.key === "ArrowLeft" ? (index + count - 1) % count : -1
+    if (next < 0) return
+    event.preventDefault()
+    setViewIndex(next)
+    event.currentTarget.parentElement?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next]?.focus()
+  }
+  return <LandingModalShell label={module.name} moduleId={module.id} presentation originEl={originEl} onClose={onClose}>
+    <div className={styles.presentation} data-has-views={Boolean(module.views)}>
+      <div className={styles.intro}>
+        <div className={styles.moduleLabel}><span><Icon size={27} strokeWidth={1.6} aria-hidden /></span>{module.name}</div>
+        {module.views && <div className={styles.tabs} role="tablist" aria-label={module.name}>
+          {module.views.map((item, index) => <button key={item.id} type="button" role="tab" id={`module-tab-${item.id}`} aria-controls={`module-view-${module.id}`} aria-selected={viewIndex === index} tabIndex={viewIndex === index ? 0 : -1} onClick={() => setViewIndex(index)} onKeyDown={(event) => selectTab(event, index)}>{item.label}</button>)}
+        </div>}
+        <h2>{module.tagline}</h2>
+        <p id={`module-description-${module.id}`} className={styles.description}>{view?.description ?? module.longDescription}</p>
+      </div>
+      <div className={styles.visual} role={view ? "tabpanel" : undefined} id={`module-view-${module.id}`} aria-labelledby={view ? `module-tab-${view.id}` : undefined} aria-describedby={view ? `module-description-${module.id} module-details-${module.id}` : undefined} tabIndex={view ? 0 : undefined}>
+        {module.id === "imoveis" ? <PropertyPreview /> : module.id === "clientes" ? <ClientPreview /> : module.id === "financeiro" ? <FinancePreview /> : module.id === "studio-ia" ? <StudioPreview /> : module.id === "propostas" ? <DocumentPreview contract={activeId === "contratos"} /> : <PropertyPreview channel={activeId === "marketplace" ? "Marketplace EME" : "Catálogo do corretor"} />}
+        <p className={styles.caption}>Demonstração de organização · Dados ilustrativos</p>
+      </div>
+      <div className={styles.details} id={`module-details-${module.id}`}>
+        <ul className={styles.benefits}>{benefits.slice(0, 3).map((benefit) => { const text = typeof benefit === "string" ? benefit : benefit.title; return <li key={text}><span><Check size={18} strokeWidth={2} aria-hidden /></span>{text}</li> })}</ul>
+        <p className={styles.note}>{view?.note ?? module.note}</p>
+        {href && action && <a className={styles.action} href={href} target="_blank" rel="noopener noreferrer">{action}<ArrowUpRight size={17} aria-hidden /><span className="sr-only"> (abre em nova aba)</span></a>}
+      </div>
+    </div>
+  </LandingModalShell>
 }

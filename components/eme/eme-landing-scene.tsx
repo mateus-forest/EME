@@ -8,12 +8,14 @@ import { AuthPanel, type AuthMode } from "@/components/eme/auth-panel"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import {
   AcceleratorHero,
-  LandingAcceleratorTeaser,
 } from "@/components/eme/landing-accelerator"
 import { LandingActivity } from "@/components/eme/landing-activity"
 import { LandingHeader } from "@/components/eme/landing-header"
 import { OrbitStage } from "@/components/eme/orbit-stage"
+import { LandingProductIntro } from "./landing-product-intro"
+import { nearestFrontAngle } from "@/lib/eme-orbit-presentation"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
+import heroMaterial from "./hero-material.module.css"
 
 export function EmeLandingScene({
   authMode,
@@ -57,18 +59,26 @@ export function EmeLandingScene({
   }
 
   const orbitTarget = useMotionValue(0)
-  const orbitAngle = useSpring(orbitTarget, { stiffness: 55, damping: 18, mass: 1.1 })
+  const orbitAngle = useSpring(orbitTarget, { stiffness: 42, damping: 24, mass: 1.05 })
   const sceneBlocking = authMode != null || selected != null || acceleratorOpen
 
   useEffect(() => {
     const THRESHOLD = 1.5
-    const SENSITIVITY = 0.13
+    const SENSITIVITY = 0.055
+    const MAX_DELTA = 80
 
     const onWheel = (e: WheelEvent) => {
-      e.preventDefault()
       if (selectedRef.current || authOpenRef.current || acceleratorOpenRef.current) return
+      if (document.querySelector("[data-landing-modal-layer]")) return
+      e.preventDefault()
       if (Math.abs(e.deltaY) < THRESHOLD) return
-      orbitTarget.set(orbitTarget.get() + e.deltaY * SENSITIVITY)
+      const modeMultiplier = e.deltaMode === WheelEvent.DOM_DELTA_LINE
+        ? 16
+        : e.deltaMode === WheelEvent.DOM_DELTA_PAGE
+          ? window.innerHeight
+          : 1
+      const normalizedDelta = Math.max(-MAX_DELTA, Math.min(MAX_DELTA, e.deltaY * modeMultiplier))
+      orbitTarget.set(orbitTarget.get() + normalizedDelta * SENSITIVITY)
     }
 
     window.addEventListener("wheel", onWheel, { passive: false })
@@ -82,10 +92,10 @@ export function EmeLandingScene({
     let previous = performance.now()
 
     const advanceOrbit = (now: number) => {
-      const elapsed = Math.min(now - previous, 64)
+      const elapsed = Math.min(now - previous, 34)
       previous = now
-      if (!selectedRef.current && !authOpenRef.current && !acceleratorOpenRef.current) {
-        orbitTarget.set(orbitTarget.get() + elapsed * 0.002)
+      if (!document.hidden && !selectedRef.current && !authOpenRef.current && !acceleratorOpenRef.current && !document.querySelector("[data-landing-modal-layer], [data-orbit-card] button:focus-visible")) {
+        orbitTarget.set(orbitTarget.get() + elapsed * 0.0012)
       }
       raf = requestAnimationFrame(advanceOrbit)
     }
@@ -164,7 +174,7 @@ export function EmeLandingScene({
       </motion.div>
 
       <motion.div
-        className="absolute inset-0"
+        className={`${heroMaterial.scene} absolute inset-0`}
         initial={false}
         animate={{
           x: acceleratorOpen ? "-10vw" : "0vw",
@@ -187,15 +197,9 @@ export function EmeLandingScene({
         />
         <LandingActivity
           authOpen={authMode != null}
-          className="absolute left-6 top-9 z-[140] hidden sm:block sm:left-12"
+          className="absolute bottom-24 left-12 z-[65] hidden sm:block"
         />
-
-        <LandingAcceleratorTeaser
-          onOpen={() => {
-            setActiveId(null)
-            setAcceleratorOpen(true)
-          }}
-        />
+        <LandingProductIntro />
 
         <div
           className="absolute inset-0 flex items-center justify-center -translate-y-[72px] pt-4 transition-opacity duration-700 ease-out sm:pt-2"
@@ -208,6 +212,11 @@ export function EmeLandingScene({
               onHover={setActiveId}
               selectedId={selected?.id ?? null}
               onSelect={handleSelect}
+              onFocusModule={(baseAngle) => {
+                const target = nearestFrontAngle(orbitAngle.get(), baseAngle)
+                orbitTarget.set(target)
+                orbitAngle.jump(target)
+              }}
               authOpen={authMode != null}
             />
           )}
@@ -275,11 +284,12 @@ export function EmeLandingScene({
 
       <div
         ref={cursorRef}
+        data-orbit-cursor
         aria-hidden
-        className="pointer-events-none fixed left-0 top-0 z-[80] hidden sm:block"
+        className="pointer-events-none fixed left-0 top-0 z-[80] hidden sm:block motion-reduce:hidden!"
       >
         <div
-          className="h-10 w-10 rounded-full border border-eme/60 bg-white/25 backdrop-blur-[3px] transition-[opacity,transform] duration-300 ease-out"
+          className={`${heroMaterial.cursor} h-10 w-10 rounded-full border transition-[opacity,transform] duration-300 ease-out`}
           style={{
             opacity: activeId ? 1 : 0,
             transform: activeId ? "scale(1)" : "scale(0.95)",

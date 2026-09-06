@@ -4,18 +4,18 @@ import { useCallback, useEffect, useLayoutEffect, useRef } from "react"
 import { type MotionValue, useMotionValueEvent } from "motion/react"
 
 import { ModuleCard } from "@/components/eme/module-card"
-import { emeModules, marketplaceModule } from "@/lib/eme-modules"
+import { emeModules } from "@/lib/eme-modules"
+import { orbitBrightness, orbitOpacity } from "@/lib/eme-orbit-presentation"
+import heroMaterial from "./hero-material.module.css"
 
 const MOBILE_ORBIT = {
-  radiusX: 220,
-  verticalLift: 140,
+  radiusX: 195,
+  verticalLift: 126,
   sideLift: 18,
   offsetY: 22,
   radiusZ: 92,
   backScale: 0.76,
   frontScale: 1,
-  backOpacity: 0.4,
-  frontOpacity: 1,
 } as const
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
@@ -27,6 +27,7 @@ type MobileOrbitStageProps = {
   orbitAngle: MotionValue<number>
   selectedId?: string | null
   onSelect?: (id: string, element: HTMLElement) => void
+  onFocusModule?: (baseAngle: number) => void
   onActiveIndexChange?: (index: number) => void
   authOpen?: boolean
 }
@@ -42,6 +43,7 @@ export function MobileOrbitStage({
   orbitAngle,
   selectedId = null,
   onSelect,
+  onFocusModule,
   onActiveIndexChange,
   authOpen = false,
 }: MobileOrbitStageProps) {
@@ -52,6 +54,10 @@ export function MobileOrbitStage({
     (angle: number) => {
       let activeIndex = 0
       let activeDepth = -Infinity
+      // Short landscape / zoom-reflow viewports need room below the orbital plane.
+      // Normal phone composition and all gesture/spring parameters are unchanged.
+      const shortViewport = clamp((window.innerHeight - 260) / 440, 0.5, 1)
+      const heightScale = mix(0.7, 1, (shortViewport - 0.5) * 2)
 
       emeModules.forEach((module, index) => {
         const element = cardRefs.current[index]
@@ -62,11 +68,11 @@ export function MobileOrbitStage({
         const front = -Math.cos(radians)
         const rawDepth = clamp((front + 1) / 2, 0, 1)
         const depth = smoothstep(rawDepth)
-        const x = lateral * MOBILE_ORBIT.radiusX
-        const y = front * MOBILE_ORBIT.verticalLift + (1 - Math.abs(front)) * MOBILE_ORBIT.sideLift + MOBILE_ORBIT.offsetY
+        const x = lateral * Math.min(MOBILE_ORBIT.radiusX, (window.innerWidth - 152) / 2)
+        const y = (front * MOBILE_ORBIT.verticalLift + (1 - Math.abs(front)) * MOBILE_ORBIT.sideLift + MOBILE_ORBIT.offsetY) * shortViewport
         const z = front * MOBILE_ORBIT.radiusZ
-        const scale = mix(MOBILE_ORBIT.backScale, MOBILE_ORBIT.frontScale, depth)
-        const baseOpacity = mix(MOBILE_ORBIT.backOpacity, MOBILE_ORBIT.frontOpacity, depth)
+        const scale = mix(MOBILE_ORBIT.backScale, MOBILE_ORBIT.frontScale, depth) * heightScale
+        const baseOpacity = orbitOpacity(rawDepth)
         const opacity = authOpen
           ? baseOpacity * 0.22
           : selectedId
@@ -77,6 +83,11 @@ export function MobileOrbitStage({
 
         element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, ${round(z)}px) rotateY(${round(-lateral * 7)}deg) scale(${round(scale, 4)})`
         element.style.opacity = round(opacity, 4).toString()
+        element.style.filter = `brightness(${round(orbitBrightness(rawDepth), 4)}) saturate(${round(0.82 + rawDepth * 0.18, 4)})`
+        element.style.zIndex = Math.round(front * 1000).toString()
+        element.dataset.depth = String(round(rawDepth, 4))
+        const button = element.querySelector("button")
+        if (button) button.style.pointerEvents = !selectedId && !authOpen && rawDepth >= 0.42 ? "auto" : "none"
         if (front > activeDepth) {
           activeDepth = front
           activeIndex = index
@@ -114,41 +125,9 @@ export function MobileOrbitStage({
       <div className="relative" style={{ transformStyle: "preserve-3d" }}>
         <div
           aria-hidden
-          className="absolute left-1/2 top-1/2 z-[5] h-[122px] w-[350px] -translate-x-1/2 rounded-[100%]"
-          style={{
-            background:
-              "radial-gradient(50% 50% at 50% 50%, rgba(115,223,48,0.18) 0%, rgba(115,223,48,0.07) 42%, rgba(115,223,48,0) 74%)",
-            transform: "translateY(32%)",
-          }}
-        />
-
-        <div
-          aria-hidden
-          className="absolute left-1/2 top-1/2 h-[128px] w-[356px] -translate-x-1/2 rounded-[100%] border border-eme/10"
+          className="pointer-events-none absolute left-1/2 top-1/2 h-[128px] w-[356px] max-w-[94vw] -translate-x-1/2 rounded-[100%] border border-eme/10"
           style={{ transform: "translate(-50%, 22%) rotateX(80deg)", zIndex: 10 }}
         />
-
-        <div
-          data-marketplace-fixed
-          className="absolute left-1/2 top-1/2"
-          style={{
-            zIndex: 34,
-            transform: "translate(-50%, -50%) translateY(-24px)",
-            transformStyle: "preserve-3d",
-            pointerEvents: frozen ? "none" : undefined,
-          }}
-        >
-          <div className="eme-marketplace-mobile-float motion-reduce:animate-none">
-            <button
-              type="button"
-              aria-label="Abrir modulo Marketplace"
-              className="block rounded-[22px] text-left"
-              onClick={(event) => onSelect?.(marketplaceModule.id, event.currentTarget)}
-            >
-              <ModuleCard module={marketplaceModule} badge="Novo" mobile animated />
-            </button>
-          </div>
-        </div>
 
         <div
           className="pointer-events-none absolute left-1/2 top-1/2"
@@ -158,11 +137,7 @@ export function MobileOrbitStage({
             transformStyle: "preserve-3d",
           }}
         >
-          <div className="relative aspect-[5/2] w-[254px]">
-            <div
-              aria-hidden
-              className="absolute inset-x-[12%] bottom-[3%] h-[12%] rounded-full bg-foreground/10 blur-[7px]"
-            />
+          <div className={`${heroMaterial.logo} relative aspect-[5/2] w-[254px]`}>
             <img
               src="/images/eme-logo-3d-premium.webp"
               alt="EME"
@@ -182,7 +157,7 @@ export function MobileOrbitStage({
             className="absolute left-1/2 top-1/2 [contain:layout_style]"
             style={{
               opacity: 0,
-              pointerEvents: frozen ? "none" : undefined,
+              pointerEvents: "none",
               transformStyle: "preserve-3d",
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
@@ -193,6 +168,11 @@ export function MobileOrbitStage({
             <button
               type="button"
               aria-label={`Abrir modulo ${module.name}`}
+              tabIndex={frozen ? -1 : 0}
+              style={{ pointerEvents: "none" }}
+              onFocus={(event) => {
+                if (!frozen && event.currentTarget.matches(":focus-visible")) onFocusModule?.(module.angle)
+              }}
               className="block rounded-[22px] text-left"
               onClick={(event) => onSelect?.(module.id, event.currentTarget)}
             >

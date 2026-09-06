@@ -8,12 +8,13 @@ import { CoastalCityBackground } from "@/components/eme/coastal-city-background"
 import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import {
   AcceleratorHero,
-  LandingAcceleratorTeaser,
 } from "@/components/eme/landing-accelerator"
-import { LandingActivity } from "@/components/eme/landing-activity"
+import { LandingProductIntro } from "./landing-product-intro"
+import { nearestFrontAngle } from "@/lib/eme-orbit-presentation"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
 import landingMobileStyles from "./landing-mobile-refinement.module.css"
+import heroMaterial from "./hero-material.module.css"
 
 /**
  * Mobile / PWA experience. The phone composition has its own geometry,
@@ -37,7 +38,7 @@ export function EmeMobileExperience({
   const resumeAutoAtRef = useRef(0)
   const acceleratorOpenRef = useRef(false)
   const orbitTarget = useMotionValue(0)
-  const orbitAngle = useSpring(orbitTarget, { stiffness: 82, damping: 24, mass: 0.82 })
+  const orbitAngle = useSpring(orbitTarget, { stiffness: 60, damping: 25, mass: 0.9 })
   const [activeIndex, setActiveIndex] = useState(0)
   const [acceleratorOpen, setAcceleratorOpen] = useState(false)
   const [mounted, setMounted] = useState(false)
@@ -59,7 +60,7 @@ export function EmeMobileExperience({
   }, [])
 
   const handleSelect = (id: string, element: HTMLElement) => {
-    if (movedRef.current > 8) return
+    if (movedRef.current > 8 && !element.matches(":focus-visible")) return
     setSelected({ id, el: element })
   }
 
@@ -72,8 +73,8 @@ export function EmeMobileExperience({
     const stageElement = stageRef.current
     if (!stageElement) return
 
-    const sensitivity = 0.2
-    const inertiaProjection = 120
+    const sensitivity = 0.14
+    const inertiaProjection = 85
     let dragging = false
     let pointerId: number | null = null
     let startX = 0
@@ -117,12 +118,12 @@ export function EmeMobileExperience({
       dragging = false
 
       const projectedDegrees = Math.max(
-        -18,
-        Math.min(18, -velocityX * sensitivity * inertiaProjection),
+        -12,
+        Math.min(12, -velocityX * sensitivity * inertiaProjection),
       )
       orbitTarget.set(orbitTarget.get() + projectedDegrees)
       interactingRef.current = false
-      resumeAutoAtRef.current = performance.now() + 650
+      resumeAutoAtRef.current = performance.now() + 800
 
       if (stageElement.hasPointerCapture(event.pointerId)) {
         stageElement.releasePointerCapture(event.pointerId)
@@ -150,7 +151,7 @@ export function EmeMobileExperience({
     let previous = performance.now()
 
     const advanceOrbit = (now: number) => {
-      const elapsed = Math.min(now - previous, 34)
+      const elapsed = Math.min(now - previous, 24)
       previous = now
 
       if (
@@ -159,9 +160,10 @@ export function EmeMobileExperience({
         !authOpenRef.current &&
         !acceleratorOpenRef.current &&
         !interactingRef.current &&
+        !document.querySelector("[data-landing-modal-layer], [data-mobile-orbit-card] button:focus-visible") &&
         now >= resumeAutoAtRef.current
       ) {
-        orbitTarget.set(orbitTarget.get() + elapsed * 0.0028)
+        orbitTarget.set(orbitTarget.get() + elapsed * 0.0016)
       }
       animationFrame = requestAnimationFrame(advanceOrbit)
     }
@@ -190,7 +192,7 @@ export function EmeMobileExperience({
       </motion.div>
 
       <motion.div
-        className="absolute inset-0"
+        className={`${heroMaterial.scene} absolute inset-0`}
         initial={false}
         animate={{
           x: acceleratorOpen ? "-12vw" : "0vw",
@@ -211,15 +213,11 @@ export function EmeMobileExperience({
           onEntrar={() => openAuth("login")}
           onComecar={() => openAuth("signup")}
         />
-        <LandingActivity
-          authOpen={authOpen}
-          compact
-          className={`${landingMobileStyles.activity} fixed left-4 top-[calc(env(safe-area-inset-top)+4rem)] z-[140]`}
-        />
+        <LandingProductIntro />
 
         <div
           ref={stageRef}
-          className="absolute inset-0 flex touch-none translate-y-[10px] items-center justify-center transition-opacity duration-700 ease-out"
+          className="absolute inset-0 flex touch-none translate-y-[10px] items-center justify-center transition-opacity duration-400 ease-out"
           style={{ opacity: mounted ? 1 : 0 }}
         >
           {mounted ? (
@@ -227,19 +225,17 @@ export function EmeMobileExperience({
               orbitAngle={orbitAngle}
               selectedId={selected?.id ?? null}
               onSelect={handleSelect}
+              onFocusModule={(baseAngle) => {
+                movedRef.current = 0
+                const target = nearestFrontAngle(orbitAngle.get(), baseAngle)
+                orbitTarget.set(target)
+                orbitAngle.jump(target)
+              }}
               onActiveIndexChange={setActiveIndex}
               authOpen={authOpen}
             />
           ) : null}
         </div>
-
-        {!selected && !authOpen ? (
-          <LandingAcceleratorTeaser
-            compact
-            className={landingMobileStyles.acceleratorTeaser}
-            onOpen={() => setAcceleratorOpen(true)}
-          />
-        ) : null}
 
         <div aria-hidden className="pointer-events-none absolute inset-0 z-[45] overflow-hidden">
           <div
@@ -278,10 +274,10 @@ export function EmeMobileExperience({
 
         {!selected && !authOpen ? (
           <div
-            className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-1/2 z-10 -translate-x-1/2"
+            className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-5 z-10"
             aria-hidden
           >
-            <div className="flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30 bg-white/45">
+            <div className={`${heroMaterial.swipe} flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30`}>
               <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
             </div>
           </div>

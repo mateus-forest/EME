@@ -2,17 +2,9 @@ import Image from "next/image"
 import {
   ArrowLeft,
   ArrowRight,
-  Check,
-  Clock3,
   Crosshair,
-  Crown,
-  DollarSign,
-  FileText,
-  Grid2X2,
-  Headphones,
   Search,
   ShieldCheck,
-  Sparkles,
   Target,
   TrendingUp,
   UserRound,
@@ -30,13 +22,13 @@ const acceleratorFeatures = [
   },
   {
     title: "Captação Inteligente de Imóveis",
-    description: "Nossa equipe busca, filtra e prioriza imóveis com potencial na sua região para você.",
+    description: "Proposta de apoio à pesquisa e organização da captação na sua região.",
     icon: Search,
   },
   {
     title: "Radar de Oportunidades",
     description:
-      "Identificamos setores, regiões, perfis de imóveis e movimentos que geram vantagem competitiva.",
+      "Estudo de setores, regiões e perfis de imóveis para apoiar a leitura do mercado.",
     icon: Crosshair,
   },
   {
@@ -54,33 +46,9 @@ const acceleratorFeatures = [
   {
     title: "Gestão de Risco",
     description:
-      "Antecipe riscos e tome decisões com segurança e previsibilidade para proteger seus resultados.",
+      "Organização de informações para apoiar a avaliação de decisões e cenários.",
     icon: ShieldCheck,
   },
-] as const
-
-const impactMetrics = [
-  { value: "+37%", label: "Oportunidades identificadas", icon: TrendingUp },
-  { value: "+52%", label: "Taxa de conversão de propostas", icon: UsersRound },
-  { value: "+28%", label: "Crescimento de receita dos corretores", icon: DollarSign },
-  { value: "−41%", label: "Tempo perdido com decisões manuais", icon: Clock3 },
-] as const
-
-const offerBenefits = [
-  { label: "Acesso a todo o conteúdo", icon: Grid2X2 },
-  { label: "Consultoria estratégica", icon: Target },
-  { label: "Relatórios e insights exclusivos", icon: FileText },
-  { label: "Suporte prioritário", icon: Headphones },
-  { label: "Créditos no Studio IA", icon: Sparkles },
-] as const
-
-const offerChecklist = [
-  "Estudo da situação atual do país",
-  "Captação inteligente de imóveis",
-  "Radar de oportunidades",
-  "Posicionamento & abordagem",
-  "Gestão de risco",
-  "Plano de ação personalizado",
 ] as const
 
 export function LandingAcceleratorTeaser({
@@ -143,10 +111,6 @@ export function AcceleratorHero({
         <FeatureGrid />
       </div>
 
-      <div className="eme-accelerator__footer">
-        <ImpactPanel />
-        <OfferPanel />
-      </div>
 
       <BackButton onBack={onBack} />
     </section>
@@ -169,10 +133,6 @@ function AcceleratorMobileHero({
       <AcceleratorIntro compact />
       <FeatureGrid compact />
 
-      <div className="eme-accelerator__footer is-compact">
-        <ImpactPanel compact />
-        <OfferPanel compact />
-      </div>
 
       <BackButton onBack={onBack} compact />
     </section>
@@ -218,7 +178,7 @@ function AcceleratorIntro({ compact = false }: { compact?: boolean }) {
           Inteligência estratégica para decidir onde crescer e como agir.
         </p>
         <p className="eme-accelerator__description">
-          O Acelerador EME transforma dados de mercado, economia, sua operação e seu posicionamento em oportunidades reais e um plano de ação claro para você gerar mais resultados.
+          Uma proposta em desenvolvimento para apoiar a leitura de mercado e a organização estratégica do corretor. Recursos e condições serão apresentados quando estiverem disponíveis.
         </p>
         {compact ? <DevelopmentBadge /> : null}
       </div>
@@ -299,63 +259,5 @@ function FeatureCard({
         <ArrowRight aria-hidden className="eme-accelerator-card__arrow" strokeWidth={1.6} />
       ) : null}
     </article>
-  )
-}
-
-function ImpactPanel({ compact = false }: { compact?: boolean }) {
-  return (
-    <section className={`eme-accelerator-impact${compact ? " is-compact" : ""}`}>
-      <h2>Impacto para corretores que usam inteligência</h2>
-      <div className="eme-accelerator-impact__metrics">
-        {impactMetrics.map(({ value, label, icon: Icon }) => (
-          <div key={value} className="eme-accelerator-impact__metric">
-            <div>
-              <Icon aria-hidden strokeWidth={1.6} />
-              <strong>{value}</strong>
-            </div>
-            <p>{label}</p>
-          </div>
-        ))}
-      </div>
-      <p className="eme-accelerator-impact__note">
-        Resultados médios observados por corretores que utilizam inteligência estratégica.
-      </p>
-    </section>
-  )
-}
-
-function OfferPanel({ compact = false }: { compact?: boolean }) {
-  return (
-    <section className={`eme-accelerator-offer${compact ? " is-compact" : ""}`}>
-      <div className="eme-accelerator-offer__hundred">
-        <Crown aria-hidden strokeWidth={1.5} />
-        <strong>100</strong>
-        <span>primeiros</span>
-      </div>
-
-      <div className="eme-accelerator-offer__main">
-        <p className="eme-accelerator-offer__eyebrow">
-          Condição exclusiva para os 100 primeiros corretores
-        </p>
-        <h2>3 meses de acesso completo + acompanhamento estratégico</h2>
-        <div className="eme-accelerator-offer__benefits">
-          {offerBenefits.map(({ label, icon: Icon }) => (
-            <div key={label}>
-              <Icon aria-hidden strokeWidth={1.6} />
-              <span>{label}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <ul className="eme-accelerator-offer__checklist">
-        {offerChecklist.map((item) => (
-          <li key={item}>
-            <Check aria-hidden strokeWidth={2} />
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </section>
   )
 }

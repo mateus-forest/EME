@@ -1,0 +1,106 @@
+/* Only the first scene uses this material; modal and accelerator portals stay unchanged. */
+.scene {
+  --hero-paper: #f7faf8;
+  --hero-edge: #dce5df;
+}
+
+.card {
+  isolation: isolate;
+  font-family: 'EME Broker Geist', Geist, sans-serif;
+  box-shadow: 0 2px 2px rgb(34 47 39 / 8%), 0 16px 28px -16px rgb(34 47 39 / 30%);
+}
+
+.surface {
+  background: linear-gradient(145deg, #fff, #f7faf8 65%, #edf4ef);
+  border: 1px solid #dce5df;
+  box-shadow: inset 0 1px 0 #fff, inset 0 -2px 0 #e3ece6;
+}
+
+.card h3 { color: #293c31; }
+.card p { color: #626f66; }
+.card svg { color: #277b4b; }
+.card h3 { line-height: 1.2; }
+
+.badge {
+  background: #e4ebdf;
+  border-color: #cedbc7;
+  box-shadow: inset 0 1px 2px rgb(44 66 46 / 7%);
+}
+
+.scene :global(.eme-landing-glass-chip),
+.scene header button,
+.scene :global(.eme-accelerator-teaser) > button {
+  /* The legacy global glass declarations use !important; scope their replacement here. */
+  background-color: var(--hero-paper) !important;
+  background-image: linear-gradient(155deg, #faf9f5, #eceee6);
+  border-color: var(--hero-edge) !important;
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  box-shadow: inset 0 1px 0 #fff, inset 0 -1px 0 #e0e3d9, 0 3px 5px -2px rgb(39 53 43 / 14%), 0 12px 20px -16px rgb(39 53 43 / 24%);
+}
+
+.scene header :global(.eme-gradient) {
+  background-color: #18773e !important;
+  background-image: linear-gradient(150deg, #2c8b4b, #156738);
+  border-color: #236d3d !important;
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 20%), inset 0 -1px 0 #125730, 0 4px 7px -3px rgb(21 75 40 / 28%);
+}
+
+.scene :global(.eme-accelerator-teaser__arrow) {
+  background: #e3e9dc;
+  color: #256c3d;
+  box-shadow: inset 0 1px 2px rgb(52 74 49 / 12%), 0 1px 0 #fff;
+}
+
+.scene :global(.eme-ambient-light) { display: none; }
+
+.swipe {
+  background: #e9ece3;
+  box-shadow: inset 0 1px 2px rgb(43 58 44 / 12%), 0 1px 0 #fff;
+}
+
+.cursor {
+  background: #f3f2ec;
+  border-color: #748875;
+  box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgb(24 48 30 / 12%);
+}
+
+.scene button:focus-visible,
+.scene a:focus-visible {
+  outline: 2px solid #25733f;
+  outline-offset: 4px;
+}
+
+/* Letter-sized footprints, not a reflection or a uniformly dark strip. */
+.logo::before,
+.logo::after {
+  content: "";
+  position: absolute;
+  pointer-events: none;
+  width: 100%;
+}
+
+.logo::before {
+  left: 1%;
+  bottom: -4%;
+  height: 10%;
+  background:
+    radial-gradient(ellipse 19% 50% at 16% 50%, rgb(37 47 39 / 19%), transparent),
+    radial-gradient(ellipse 25% 50% at 52% 50%, rgb(37 47 39 / 16%), transparent),
+    radial-gradient(ellipse 18% 50% at 85% 50%, rgb(37 47 39 / 19%), transparent);
+}
+
+.logo::after {
+  left: 0;
+  bottom: -1%;
+  height: 3%;
+  background:
+    radial-gradient(ellipse 17% 50% at 16% 50%, rgb(29 39 30 / 36%), transparent),
+    radial-gradient(ellipse 22% 50% at 52% 50%, rgb(29 39 30 / 30%), transparent),
+    radial-gradient(ellipse 16% 50% at 85% 50%, rgb(29 39 30 / 36%), transparent);
+}
+
+.logo img {
+  z-index: 1;
+  filter: saturate(.84) brightness(.98) contrast(.96);
+}

@@ -33,6 +33,7 @@ type LandingModalShellProps = {
   label: string
   moduleId: string
   aspectRatio?: number
+  presentation?: boolean
   imageOnly?: {
     variant: "desktop" | "mobile"
     closeXPercent: number
@@ -67,6 +68,7 @@ export function LandingModalShell({
   label,
   moduleId,
   aspectRatio,
+  presentation = false,
   imageOnly,
   originEl,
   onClose,
@@ -82,6 +84,16 @@ export function LandingModalShell({
   const isImageOnly = imageOnly != null
 
   useLandingModalScrollLock()
+
+  useEffect(() => {
+    const layer = shellRef.current?.closest("[data-landing-modal-layer]")
+    const siblings = Array.from(document.body.children).filter(
+      (element): element is HTMLElement => element instanceof HTMLElement && element !== layer && !element.contains(layer ?? null),
+    )
+    const previous = siblings.map((element) => element.inert)
+    siblings.forEach((element) => { element.inert = true })
+    return () => siblings.forEach((element, index) => { element.inert = previous[index] })
+  }, [])
 
   const finishClose = useCallback(() => {
     if (completedRef.current) return
@@ -184,7 +196,7 @@ export function LandingModalShell({
     <EmeModalViewport asChild>
       <div
         data-landing-modal-layer
-        className="eme-landing-modal-layer"
+        className={`eme-landing-modal-layer${presentation ? ` ${styles.presentationLayer}` : ""}`}
       >
         <EmeModalBackdrop asChild>
           <motion.div
@@ -206,7 +218,7 @@ export function LandingModalShell({
             data-module-dialog={moduleId}
             data-landing-modal-shell
             data-landing-modal-image-only={imageOnly?.variant}
-            className={`eme-landing-modal-shell cursor-default text-foreground${isImageOnly ? ` ${styles.imageOnly}` : ""}`}
+            className={`eme-landing-modal-shell cursor-default text-foreground${presentation ? ` ${styles.presentation}` : ""}${isImageOnly ? ` ${styles.imageOnly}` : ""}`}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
             animate={{
               opacity: closing ? 0 : 1,
