@@ -1,3 +1,5 @@
+import { LandingJourney } from "./landing-journey"
+
 export function LandingHeader({
   onEntrar,
   onComecar,
@@ -29,6 +31,7 @@ export function LandingHeader({
           >
             Entrar
           </button>
+          <LandingJourney hidden={authOpen} />
           <button
             type="button"
             onClick={onComecar}

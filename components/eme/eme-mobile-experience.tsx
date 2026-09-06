@@ -12,6 +12,7 @@ import {
   AcceleratorHero,
 } from "@/components/eme/landing-accelerator"
 import { LandingProductIntro } from "./landing-product-intro"
+import { LandingJourney } from "./landing-journey"
 import { nearestFrontAngle } from "@/lib/eme-orbit-presentation"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
 import { emeModules, marketplaceModule } from "@/lib/eme-modules"
@@ -358,6 +359,7 @@ function MobileHeader({
           >
             Entrar
           </button>
+          <LandingJourney hidden={authOpen} />
           <button
             type="button"
             onClick={onComecar}

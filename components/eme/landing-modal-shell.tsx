@@ -35,6 +35,7 @@ type LandingModalShellProps = {
   moduleId: string
   aspectRatio?: number
   presentation?: boolean
+  className?: string
   imageOnly?: {
     variant: "desktop" | "mobile"
     closeXPercent: number
@@ -70,6 +71,7 @@ export function LandingModalShell({
   moduleId,
   aspectRatio,
   presentation = false,
+  className = "",
   imageOnly,
   originEl,
   onClose,
@@ -220,7 +222,7 @@ export function LandingModalShell({
             data-landing-modal-shell
             data-closing={closing}
             data-landing-modal-image-only={imageOnly?.variant}
-            className={`eme-landing-modal-shell cursor-default text-foreground${presentation ? ` ${styles.presentation}` : ""}${isImageOnly ? ` ${styles.imageOnly}` : ""}`}
+            className={`eme-landing-modal-shell cursor-default text-foreground${presentation ? ` ${styles.presentation}` : ""}${isImageOnly ? ` ${styles.imageOnly}` : ""} ${className}`}
             initial={{ opacity: 0, y: reduceMotion ? 0 : 14, scale: reduceMotion ? 1 : 0.982 }}
             animate={{
               opacity: closing ? 0 : 1,
