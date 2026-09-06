@@ -60,11 +60,11 @@ function JourneyContent() {
     </header>
     <div className={styles.flow}>
       <ol ref={grid} className={styles.grid}>
-        {steps.map(({ title, description, icon: Icon }, index) => <li key={title} className={styles.card} style={{ "--delay": `${index * 2.2}s` } as CSSProperties}>
+        {steps.map(({ title, description, icon: Icon }, index) => <li key={title} className={styles.card} style={{ "--delay": `${index * 1.76}s` } as CSSProperties}>
           <div className={styles.symbol}><span>{index + 1}</span><Icon size={34} strokeWidth={1.6} aria-hidden /></div>
           <div className={styles.copy}><h3>{title}</h3><p>{description}</p></div>
         </li>)}
-        <li className={`${styles.card} ${styles.result}`} style={{ "--delay": "15.4s" } as CSSProperties}>
+        <li className={`${styles.card} ${styles.result}`} style={{ "--delay": "12.32s" } as CSSProperties}>
           <h3 className={styles.resultTitle}>Resultado</h3>
           <div className={styles.resultSymbol} aria-hidden><ChartNoAxesCombined size={36} strokeWidth={1.4} /><span>✧</span></div>
           <ul>{["Mais resultado", "Mais agilidade", "Mais velocidade", "Mais autoridade"].map(text => <li key={text}><Check size={17} strokeWidth={1.8} aria-hidden />{text}</li>)}</ul>
@@ -73,7 +73,7 @@ function JourneyContent() {
       <svg className={styles.connections} aria-hidden="true" focusable="false">
         <defs><marker id={arrowId} markerWidth="7" markerHeight="7" refX="6" refY="3.5" orient="auto" markerUnits="userSpaceOnUse"><path d="M1 1 L6 3.5 L1 6" className={styles.arrow} /></marker></defs>
         {paths.map((path, index) => <g key={index}><path d={path} className={styles.track} markerEnd={`url(#${arrowId})`} />
-          <path d={path} pathLength={100} className={styles.light} style={{ "--delay": `${index * 2.2 + 1}s` } as CSSProperties} />
+          <path d={path} pathLength={100} className={styles.light} style={{ "--delay": `${index * 1.76 + .8}s` } as CSSProperties} />
         </g>)}
       </svg>
     </div>
@@ -83,12 +83,10 @@ function JourneyContent() {
 export function LandingJourney({ hidden = false }: { hidden?: boolean }) {
   const [open, setOpen] = useState(false)
   const trigger = useRef<HTMLButtonElement>(null)
-  const tooltip = useId()
   return <>
     <span className={styles.triggerWrap} hidden={hidden}>
       <button ref={trigger} type="button" className={styles.trigger} aria-label="Como o EME funciona"
-        aria-haspopup="dialog" aria-expanded={open} aria-describedby={tooltip} onClick={() => setOpen(true)}><span aria-hidden="true">?</span></button>
-      <span id={tooltip} role="tooltip" className={styles.tooltip}>Como o EME funciona</span>
+        aria-haspopup="dialog" aria-expanded={open} onClick={() => setOpen(true)}><span aria-hidden="true">?</span></button>
     </span>
     {open && !hidden && <LandingModalShell moduleId="journey" label="Como o EME funciona" presentation
       className={styles.shell} originEl={trigger.current} onClose={() => setOpen(false)}><JourneyContent /></LandingModalShell>}

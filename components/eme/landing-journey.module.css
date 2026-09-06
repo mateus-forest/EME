@@ -4,8 +4,6 @@
 .trigger > span { display: grid; place-items: center; width: 34px; height: 34px; border: 1px solid rgb(255 255 255 / 85%); border-radius: 50%; background: rgb(250 253 251 / 90%); box-shadow: inset 0 1px 0 #fff, 0 3px 8px rgb(23 49 33 / 9%); font-family: 'EME Broker Geist', Geist, sans-serif; font-size: 20px; font-weight: 500; }
 .trigger:hover > span { background: #edf6f0; }
 .trigger:focus-visible { outline: 2px solid #298452; outline-offset: 1px; }
-.tooltip { position: absolute; top: calc(100% + 8px); left: 50%; transform: translateX(-50%); width: max-content; padding: 7px 10px; border-radius: 9px; background: #f8fcf9; color: #28523c; font-size: 11px; box-shadow: 0 3px 10px rgb(20 40 30 / 10%); opacity: 0; visibility: hidden; pointer-events: none; }
-.triggerWrap:hover .tooltip, .triggerWrap:focus-within .tooltip { opacity: 1; visibility: visible; }
 .shell.shell.shell.shell { width: min(920px, calc(100vw - 48px)); border-radius: 24px; background: radial-gradient(ellipse at 85% 95%, rgb(211 237 224 / 65%), transparent 55%), linear-gradient(135deg, rgb(247 252 250 / 97%), rgb(250 253 255 / 95%) 55%, rgb(243 250 246 / 97%)); border: 1px solid rgb(255 255 255 / 90%); box-shadow: inset 0 1px 0 #fff, 0 20px 60px -25px rgb(15 52 36 / 30%); }
 .content { padding: 30px 16px 32px; color: #102c29; font-family: 'EME Broker Geist', Geist, ui-sans-serif, sans-serif; }
 .heading { position: relative; margin: 0 22px 28px; padding-right: 112px; }
@@ -17,14 +15,14 @@
 .flow { position: relative; }
 .grid { position: relative; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 38px 28px; list-style: none; margin: 0; padding: 0 16px; }
 .card { position: relative; min-width: 0; padding: 22px 19px 20px; border: 1px solid rgb(222 233 233 / 60%); border-radius: 21px; background: linear-gradient(145deg, rgb(255 255 255 / 94%), rgb(255 255 255 / 65%)); box-shadow: inset 0 1px 0 #fff, 0 8px 20px -16px rgb(22 59 37 / 20%); }
-.card::after { content: ''; pointer-events: none; position: absolute; inset: -1px; border: 1px solid rgb(68 147 98 / 55%); border-radius: inherit; box-shadow: 0 0 12px rgb(74 155 109 / 12%), inset 0 0 14px rgb(128 191 153 / 8%); opacity: 0; animation: cardPulse 20s ease-in-out var(--delay) infinite; }
+.card::after { content: ''; pointer-events: none; position: absolute; inset: -1px; border: 1px solid rgb(41 154 97 / 85%); border-radius: inherit; background: rgb(77 183 124 / 7%); box-shadow: 0 0 18px rgb(56 155 99 / 24%), inset 0 0 16px rgb(106 190 140 / 12%); opacity: 0; animation: cardPulse 16s ease-in-out var(--delay) infinite; }
 .symbol { display: flex; justify-content: center; align-items: center; margin: 5px 0 15px; color: #07884b; }
 .symbol > span { position: absolute; top: 11px; left: 11px; display: grid; place-items: center; width: 29px; height: 29px; border-radius: 50%; background: #dceee6; color: #176d4e; font-size: 16px; font-weight: 500; }
 .copy { min-width: 0; }
 .card h3 { margin: 0; font-size: 15px; line-height: 1.22; font-weight: 500; letter-spacing: -.045em; }
 .copy p { margin: 9px 0 0; font-size: 13px; line-height: 1.35; letter-spacing: -.025em; color: #647987; }
 .result { background: linear-gradient(145deg, #74d4ae -10%, #269d61 48%, #227850); color: #fff; border-color: rgb(87 180 132 / 40%); box-shadow: inset 0 1px 0 rgb(255 255 255 / 35%), 0 9px 16px -8px rgb(14 97 50 / 40%); }
-.result::after { border-color: #82c9a1; box-shadow: 0 0 15px rgb(41 136 79 / 18%), inset 0 0 18px rgb(217 255 230 / 15%); }
+.result::after { border-color: #b2edcb; background: rgb(227 255 238 / 10%); box-shadow: 0 0 20px rgb(41 136 79 / 30%), inset 0 0 20px rgb(217 255 230 / 22%); }
 .resultTitle { position: absolute; width: 1px; height: 1px; padding: 0; clip-path: inset(50%); white-space: nowrap; overflow: hidden; }
 .resultSymbol { display: flex; align-items: center; justify-content: space-between; margin: 0 0 16px; }
 .resultSymbol > span { font-size: 34px; font-weight: 300; line-height: 1; transform: rotate(15deg); opacity: .85; }
@@ -36,9 +34,9 @@
 .track, .light { fill: none; stroke-linecap: round; stroke-linejoin: round; }
 .track { stroke: #39986e; stroke-width: 1.2; }
 .arrow { fill: none; stroke: #39986e; stroke-width: 1.3; stroke-linecap: round; stroke-linejoin: round; }
-.light { stroke: #62a980; stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; animation: flowLight 20s ease-in-out var(--delay) infinite; }
+.light { stroke: #20ad69; stroke-width: 2.6; stroke-dasharray: 100; stroke-dashoffset: 100; opacity: 0; animation: flowLight 16s ease-in-out var(--delay) infinite; }
 @keyframes cardPulse { 0%, 12%, 100% { opacity: 0; } 3%, 7% { opacity: 1; } }
-@keyframes flowLight { 0% { opacity: 0; stroke-dashoffset: 100; } 1% { opacity: .85; } 6% { opacity: .85; stroke-dashoffset: 0; } 10%, 100% { opacity: 0; stroke-dashoffset: 0; } }
+@keyframes flowLight { 0% { opacity: 0; stroke-dashoffset: 100; } 1% { opacity: 1; } 6% { opacity: 1; stroke-dashoffset: 0; } 10%, 100% { opacity: 0; stroke-dashoffset: 0; } }
 [data-journey-running="false"] .card::after, [data-journey-running="false"] .light { animation-play-state: paused; }
 @media (max-width: 700px) {
   .shell.shell.shell.shell { width: min(calc(100vw - 24px), 100%); }
@@ -57,6 +55,6 @@
   .result { display: block; padding: 20px; }
   .result ul { gap: 10px; }
   .result li { font-size: 14px; }
-  .card::after { box-shadow: inset 0 0 12px rgb(128 191 153 / 10%); }
+  .card::after { box-shadow: 0 0 10px rgb(56 155 99 / 18%), inset 0 0 12px rgb(106 190 140 / 14%); }
 }
 @media (prefers-reduced-motion: reduce) { .card::after, .light { animation: none; } }
