@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useInlineVideoPlayback } from '../use-inline-video-playback'
 
 const SOURCES = [
   '/marketplace/videos/hero-1.mp4',
@@ -15,9 +16,14 @@ const CROSSFADE_SECONDS = 2.4
 export function HeroVideoBackground() {
   const [reduced, setReduced] = useState(false)
   const [isInViewport, setIsInViewport] = useState(true)
+  const [covered, setCovered] = useState(false)
+  const coveredRef = useRef(false)
   const [slotSources, setSlotSources] = useState<[number, number]>([0, 1])
   const [activeSlot, setActiveSlot] = useState<0 | 1>(0)
   const [outgoingSlot, setOutgoingSlot] = useState<0 | 1 | null>(null)
+  const [prepared, setPrepared] = useState<[number, number]>([0, -1])
+  const firstRef = useRef<HTMLVideoElement>(null)
+  const secondRef = useRef<HTMLVideoElement>(null)
   const videoRefs = useRef<[HTMLVideoElement | null, HTMLVideoElement | null]>([null, null])
   const rootRef = useRef<HTMLDivElement>(null)
   const isInViewportRef = useRef(true)
@@ -26,6 +32,16 @@ export function HeroVideoBackground() {
   const outgoingSlotRef = useRef<0 | 1 | null>(null)
   const transitioningRef = useRef(false)
   const cleanupTimerRef = useRef<number | null>(null)
+  useInlineVideoPlayback(firstRef, !reduced && !covered && isInViewport && (activeSlot === 0 || outgoingSlot === 0))
+  useInlineVideoPlayback(secondRef, !reduced && !covered && isInViewport && (activeSlot === 1 || outgoingSlot === 1))
+  useEffect(() => {
+    const update = (event: Event) => {
+      coveredRef.current = Boolean((event as CustomEvent<boolean>).detail)
+      setCovered(coveredRef.current)
+    }
+    window.addEventListener('eme:search-video', update)
+    return () => window.removeEventListener('eme:search-video', update)
+  }, [])
 
   useEffect(() => {
     activeSlotRef.current = activeSlot
@@ -35,16 +51,34 @@ export function HeroVideoBackground() {
     const root = rootRef.current
     if (!root) return
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        const nextVisible = entry.isIntersecting
+    let frame = 0
+    const check = () => {
+      cancelAnimationFrame(frame)
+      frame = requestAnimationFrame(() => {
+        const rect = root.getBoundingClientRect()
+        // Safari can deliver a stale initial non-intersecting entry during layout.
+        // Pause only when the actual rectangle is entirely outside the viewport.
+        if (!rect.width || !rect.height) return
+        const viewport = window.visualViewport
+        const top = viewport?.offsetTop ?? 0
+        const left = viewport?.offsetLeft ?? 0
+        const nextVisible = rect.bottom > top && rect.top < top + (viewport?.height ?? window.innerHeight) && rect.right > left && rect.left < left + (viewport?.width ?? window.innerWidth)
         isInViewportRef.current = nextVisible
         setIsInViewport(nextVisible)
-      },
-      { threshold: 0.05 },
-    )
+      })
+    }
+    const observer = new IntersectionObserver(check, { threshold: 0 })
     observer.observe(root)
-    return () => observer.disconnect()
+    check()
+    window.addEventListener('pageshow', check)
+    window.visualViewport?.addEventListener('resize', check)
+    window.visualViewport?.addEventListener('scroll', check)
+    return () => {
+      observer.disconnect(); cancelAnimationFrame(frame)
+      window.removeEventListener('pageshow', check)
+      window.visualViewport?.removeEventListener('resize', check)
+      window.visualViewport?.removeEventListener('scroll', check)
+    }
   }, [])
 
   useEffect(() => {
@@ -56,7 +90,7 @@ export function HeroVideoBackground() {
   }, [])
 
   const playVideo = useCallback(async (video: HTMLVideoElement | null) => {
-    if (!video || !isInViewportRef.current || document.hidden) return false
+    if (!video || !isInViewportRef.current || coveredRef.current || document.hidden) return false
     video.muted = true
     video.defaultMuted = true
     video.playsInline = true
@@ -70,10 +104,12 @@ export function HeroVideoBackground() {
   }, [])
 
   const preloadVideo = useCallback((slot: 0 | 1) => {
-    const video = videoRefs.current[slot]
-    if (!video || !isInViewportRef.current || video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) return
-    video.preload = 'auto'
-    if (video.networkState === HTMLMediaElement.NETWORK_EMPTY) video.load()
+    setPrepared(current => {
+      if (current[slot] === slotSourcesRef.current[slot]) return current
+      const next: [number, number] = [...current]
+      next[slot] = slotSourcesRef.current[slot]
+      return next
+    })
   }, [])
 
   const finishCrossfade = useCallback((slot: 0 | 1) => {
@@ -116,7 +152,6 @@ export function HeroVideoBackground() {
     if (incoming.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) return
 
     transitioningRef.current = true
-    outgoing.pause()
     try {
       incoming.currentTime = 0
     } catch {
@@ -124,6 +159,11 @@ export function HeroVideoBackground() {
     }
 
     const started = await playVideo(incoming)
+    if (videoRefs.current[nextSlot] !== incoming || !isInViewportRef.current || coveredRef.current || document.hidden) {
+      incoming.pause()
+      transitioningRef.current = false
+      return
+    }
     if (!started) {
       transitioningRef.current = false
       void playVideo(outgoing)
@@ -142,44 +182,20 @@ export function HeroVideoBackground() {
   }, [finishCrossfade, playVideo, preloadVideo, reduced])
 
   useEffect(() => {
-    if (reduced || !isInViewport) {
-      videoRefs.current.forEach((video) => video?.pause())
-      return
+    // A clip can finish as Safari suspends the page. Resume the sequence instead
+    // of leaving its last frame frozen when the hero becomes visible again.
+    const resumeSequence = () => {
+      const slot = activeSlotRef.current
+      if (videoRefs.current[slot]?.ended) void beginCrossfade(slot)
     }
-
-    const current = videoRefs.current[activeSlot]
-    const nextSlot = (activeSlot === 0 ? 1 : 0) as 0 | 1
-    videoRefs.current.forEach((video, slot) => {
-      if (slot !== activeSlot) video?.pause()
-    })
-    preloadVideo(activeSlot)
-    preloadVideo(nextSlot)
-    void playVideo(current)
-  }, [activeSlot, isInViewport, playVideo, preloadVideo, reduced])
-
-  useEffect(() => {
-    if (reduced) return
-
-    const resumeActive = () => {
-      if (document.hidden || !isInViewportRef.current) {
-        videoRefs.current.forEach((video) => video?.pause())
-        return
-      }
-      videoRefs.current.forEach((video, slot) => {
-        if (slot !== activeSlotRef.current) video?.pause()
-      })
-      void playVideo(videoRefs.current[activeSlotRef.current])
-    }
-
-    document.addEventListener('visibilitychange', resumeActive)
-    window.addEventListener('pageshow', resumeActive)
-    window.addEventListener('focus', resumeActive)
+    resumeSequence()
+    document.addEventListener('visibilitychange', resumeSequence)
+    window.addEventListener('pageshow', resumeSequence)
     return () => {
-      document.removeEventListener('visibilitychange', resumeActive)
-      window.removeEventListener('pageshow', resumeActive)
-      window.removeEventListener('focus', resumeActive)
+      document.removeEventListener('visibilitychange', resumeSequence)
+      window.removeEventListener('pageshow', resumeSequence)
     }
-  }, [playVideo, reduced])
+  }, [beginCrossfade, covered, isInViewport])
 
   useEffect(() => () => {
     videoRefs.current.forEach((video) => video?.pause())
@@ -190,19 +206,10 @@ export function HeroVideoBackground() {
   if (reduced) {
     return (
       <div ref={rootRef} aria-hidden="true" className="absolute inset-0 bg-[#0d1512]">
-        <video
-          src={SOURCES[0]}
-          muted
-          playsInline
-          preload="metadata"
+        <img
+          src="/marketplace/images/hero-residence.png"
+          alt=""
           className="h-full w-full object-cover"
-          onLoadedMetadata={(event) => {
-            try {
-              event.currentTarget.currentTime = 0.1
-            } catch {
-              // Keep the first available frame.
-            }
-          }}
         />
       </div>
     )
@@ -220,6 +227,8 @@ export function HeroVideoBackground() {
             key={`hero-video-slot-${slot}`}
             ref={(node) => {
               videoRefs.current[slot] = node
+              if (slot === 0) firstRef.current = node
+              else secondRef.current = node
               if (node) {
                 node.muted = true
                 node.defaultMuted = true
@@ -227,23 +236,23 @@ export function HeroVideoBackground() {
                 node.controls = false
               }
             }}
-            src={source}
-            autoPlay={isActive && isInViewport}
+            src={prepared[slot] === sourceIndex ? source : undefined}
+            autoPlay={isActive && isInViewport && !covered}
             muted
             playsInline
             controls={false}
             disablePictureInPicture
-            preload={isInViewport ? "auto" : "metadata"}
+            preload={isInViewport && prepared[slot] === sourceIndex ? 'auto' : 'none'}
             onTimeUpdate={(event) => {
               if (!isActive || transitioningRef.current) return
               const video = event.currentTarget
               if (!Number.isFinite(video.duration) || video.duration <= 0) return
+              if (video.currentTime > 0.25 && video.duration - video.currentTime <= CROSSFADE_SECONDS + 2) preloadVideo(slot === 0 ? 1 : 0)
               if (video.duration - video.currentTime <= CROSSFADE_SECONDS) void beginCrossfade(slot)
             }}
             onEnded={isActive ? () => void beginCrossfade(slot) : undefined}
             onCanPlay={() => {
               if (isActive) {
-                void playVideo(videoRefs.current[slot])
                 return
               }
               const current = videoRefs.current[activeSlotRef.current]

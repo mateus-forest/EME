@@ -14,5 +14,4 @@
   <rect width="1080" height="1920" fill="url(#bg)"/>
   <rect width="1080" height="1920" fill="url(#light)"/>
   <path d="M120 1380C350 1240 650 1210 960 1320V1920H120Z" fill="#07100b" fill-opacity=".45"/>
-  <text x="540" y="930" text-anchor="middle" fill="#fff" fill-opacity=".76" font-family="Arial, sans-serif" font-size="74" font-weight="700" letter-spacing="18">EME</text>
 </svg>

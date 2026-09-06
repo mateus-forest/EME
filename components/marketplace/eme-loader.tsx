@@ -26,7 +26,7 @@ export function EmeLoader({
     >
       <span className="marketplace-loader-halo absolute inset-[16%] rounded-full" aria-hidden="true" />
       <Image
-        src="/marketplace/eme-logo-raw.svg"
+        src="/images/eme-logo-header-official.png"
         alt="EME"
         width={80}
         height={80}
