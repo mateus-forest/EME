@@ -27,6 +27,43 @@ function PropertyPreview({ channel }: { channel?: string }) {
   </div>
 }
 
+const channelExamples = {
+  catalogo: {
+    title: "Catálogo real do corretor",
+    src: "/eme/demos/catalog-real-mobile.png",
+    width: 853,
+    height: 1843,
+    alt: "Exemplo real do catálogo público de um corretor no EME",
+  },
+  marketplace: {
+    title: "Marketplace EME",
+    src: "/eme/demos/marketplace-real-mobile.png",
+    width: 390,
+    height: 800,
+    alt: "Exemplo real da experiência mobile do Marketplace EME",
+  },
+} as const
+
+function ChannelPreview({ kind }: { kind: keyof typeof channelExamples }) {
+  const example = channelExamples[kind]
+  return <div className={`${styles.preview} ${styles.channelPreview}`}>
+    <div className={styles.previewHeader}><span>{example.title}</span><span className={styles.pill}>Exemplo real</span></div>
+    <div className={styles.channelScreenshotFrame}>
+      <Image
+        key={example.src}
+        className={styles.channelScreenshot}
+        src={example.src}
+        alt={example.alt}
+        width={example.width}
+        height={example.height}
+        sizes="(min-width: 1024px) 250px, (min-width: 641px) 42vw, calc(100vw - 84px)"
+        quality={95}
+        loading="eager"
+      />
+    </div>
+  </div>
+}
+
 function ClientPreview() {
   return <div className={styles.preview}>
     <div className={styles.previewHeader}><span>Atendimento e agenda</span><Users size={20} aria-hidden /></div>
@@ -113,8 +150,8 @@ export function ExpandedModulePanel({ module, originEl, onClose }: { module: Eme
         <p data-choreography="2" id={`module-description-${module.id}`} className={styles.description}>{view?.description ?? module.longDescription}</p>
       </div>
       <div className={styles.visual} data-choreography="3" role={view ? "tabpanel" : undefined} id={`module-view-${module.id}`} aria-labelledby={view ? `module-tab-${view.id}` : undefined} aria-describedby={view ? `module-description-${module.id} module-details-${module.id}` : undefined} tabIndex={view ? 0 : undefined}>
-        {module.id === "imoveis" ? <PropertyPreview /> : module.id === "clientes" ? <ClientPreview /> : module.id === "financeiro" ? <FinancePreview /> : module.id === "studio-ia" ? <StudioPreview /> : module.id === "propostas" ? <DocumentPreview contract={activeId === "contratos"} /> : <PropertyPreview channel={activeId === "marketplace" ? "Marketplace EME" : "Catálogo do corretor"} />}
-        <p className={styles.caption}>Demonstração de organização · Dados ilustrativos</p>
+        {module.id === "imoveis" ? <PropertyPreview /> : module.id === "clientes" ? <ClientPreview /> : module.id === "financeiro" ? <FinancePreview /> : module.id === "studio-ia" ? <StudioPreview /> : module.id === "propostas" ? <DocumentPreview contract={activeId === "contratos"} /> : <ChannelPreview kind={activeId === "marketplace" ? "marketplace" : "catalogo"} />}
+        <p className={styles.caption}>{module.id === "catalogo" ? `Exemplo real · ${activeId === "marketplace" ? "Marketplace EME" : "Catálogo EME"}` : "Demonstração de organização · Dados ilustrativos"}</p>
       </div>
       <div className={styles.details} data-choreography="4" id={`module-details-${module.id}`}>
         <ul className={styles.benefits}>{benefits.slice(0, 3).map((benefit) => { const text = typeof benefit === "string" ? benefit : benefit.title; return <li key={text}><span><Check size={18} strokeWidth={2} aria-hidden /></span>{text}</li> })}</ul>
