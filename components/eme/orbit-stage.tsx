@@ -18,10 +18,10 @@ type StageConfig = {
 
 function useStageConfig(): StageConfig {
   const [config, setConfig] = useState<StageConfig>({
-    radiusX: 660,
-    radiusZ: 150,
-    archLift: 250,
-    baseScale: 1,
+    radiusX: 400,
+    radiusZ: 178,
+    archLift: 114,
+    baseScale: 0.82,
     onlyPriority: false,
   })
 
@@ -29,11 +29,11 @@ function useStageConfig(): StageConfig {
     const compute = () => {
       const w = window.innerWidth
       if (w < 1024) {
-        setConfig({ radiusX: 275, radiusZ: 140, archLift: 108, baseScale: 0.68, onlyPriority: false })
+        setConfig({ radiusX: 250, radiusZ: 140, archLift: 96, baseScale: 0.68, onlyPriority: false })
       } else if (w < 1440) {
-        setConfig({ radiusX: 395, radiusZ: 160, archLift: 120, baseScale: 0.74, onlyPriority: false })
+        setConfig({ radiusX: 350, radiusZ: 160, archLift: 106, baseScale: 0.74, onlyPriority: false })
       } else {
-        setConfig({ radiusX: 460, radiusZ: 178, archLift: 130, baseScale: 0.82, onlyPriority: false })
+        setConfig({ radiusX: 400, radiusZ: 178, archLift: 114, baseScale: 0.82, onlyPriority: false })
       }
     }
 

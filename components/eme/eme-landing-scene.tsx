@@ -197,7 +197,7 @@ export function EmeLandingScene({
         />
         <LandingActivity
           authOpen={authMode != null}
-          className="absolute bottom-24 left-12 z-[65] hidden sm:block"
+          className="absolute bottom-10 left-12 z-[65] hidden sm:block"
         />
         <LandingProductIntro />
 
