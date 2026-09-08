@@ -11,7 +11,7 @@ import { ExpandedModulePanel } from "@/components/eme/expanded-module-panel"
 import {
   AcceleratorHero,
 } from "@/components/eme/landing-accelerator"
-import { LandingProductIntro } from "./landing-product-intro"
+import { LandingCosInfo, LandingProductIntro } from "./landing-product-intro"
 import { LandingActivity } from "./landing-activity"
 import { LandingJourney } from "./landing-journey"
 import { nearestFrontAngle } from "@/lib/eme-orbit-presentation"
@@ -196,7 +196,7 @@ export function EmeMobileExperience({
       </motion.div>
 
       <motion.div
-        className={`${heroMaterial.scene} absolute inset-0`}
+        className={`${heroMaterial.scene} ${landingMobileStyles.composition} absolute inset-0`}
         initial={false}
         animate={{
           x: acceleratorOpen ? "-12vw" : "0vw",
@@ -212,15 +212,17 @@ export function EmeMobileExperience({
         style={{ pointerEvents: acceleratorOpen ? "none" : "auto", willChange: "transform, opacity" }}
         aria-hidden={acceleratorOpen}
       >
+        <div data-mobile-hero-zone className={landingMobileStyles.heroZone}>
         <MobileHeader
           authOpen={authOpen}
           onEntrar={() => openAuth("login")}
           onComecar={() => openAuth("signup")}
         />
-        <LandingProductIntro showSupport={false} />
+        <LandingProductIntro showSupport={false} includeCos={false} />
 
         <div data-mobile-landing-activity className={landingMobileStyles.activity}>
           <LandingActivity compact showWhenEmpty authOpen={sceneBlocking} />
+        </div>
         </div>
 
         <div
@@ -255,6 +257,8 @@ export function EmeMobileExperience({
           />
         </div>
 
+        <div data-mobile-footer-zone className={landingMobileStyles.footerZone}>
+        <LandingCosInfo className={landingMobileStyles.cosActions} />
         {!selected && !authOpen ? (
           <div
             data-mobile-orbit-pagination
@@ -279,7 +283,7 @@ export function EmeMobileExperience({
             })}
           </div>
         ) : null}
-
+        </div>
       </motion.div>
 
       <AnimatePresence initial={false}>

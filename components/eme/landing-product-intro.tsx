@@ -22,16 +22,22 @@ const upcomingCapabilities = [
   { icon: Sparkles, text: "Atuar como um verdadeiro assistente da rotina do corretor" },
 ]
 
-export function LandingProductIntro({ showSupport = true }: { showSupport?: boolean }) {
-  const [cosOpen, setCosOpen] = useState(false)
-  const origin = useRef<HTMLButtonElement>(null)
+export function LandingProductIntro({ showSupport = true, includeCos = true }: { showSupport?: boolean; includeCos?: boolean }) {
   return <>
     <section className={styles.intro} aria-label="Conheça o EME">
       <p className={styles.category}>EME · Sistema Operacional do Corretor</p>
       <h1>Uma estrutura à altura do seu trabalho.</h1>
       {showSupport && <p className={styles.support}>Organize clientes e imóveis, prepare materiais e documentos e apresente sua carteira com apoio de IA.</p>}
     </section>
-    <aside className={styles.secondary}>
+    {includeCos && <LandingCosInfo />}
+  </>
+}
+
+export function LandingCosInfo({ className = "" }: { className?: string }) {
+  const [cosOpen, setCosOpen] = useState(false)
+  const origin = useRef<HTMLButtonElement>(null)
+  return <>
+    <aside className={`${styles.secondary} ${className}`}>
       <button ref={origin} type="button" onClick={() => setCosOpen(true)}><MessageCircle size={15} aria-hidden /> Conheça o papel do COS</button>
       <span>Acelerador EME · Em desenvolvimento</span>
     </aside>

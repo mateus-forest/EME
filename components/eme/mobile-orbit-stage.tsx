@@ -8,6 +8,7 @@ import { emeModules } from "@/lib/eme-modules"
 import { orbitBrightness, orbitOpacity } from "@/lib/eme-orbit-presentation"
 import heroMaterial from "./hero-material.module.css"
 import mobileStyles from "./landing-mobile-refinement.module.css"
+import { createMobileOrbitLayout, mobileOrbitPoint, type MobileOrbitLayout } from "@/lib/eme-mobile-orbit-layout"
 
 const MOBILE_ORBIT = {
   radiusX: 164,
@@ -53,6 +54,7 @@ export function MobileOrbitStage({
   const stageRef = useRef<HTMLDivElement>(null)
   const trailRef = useRef<SVGEllipseElement>(null)
   const geometryRef = useRef({ radiusX: 148, heightScale: 1 })
+  const compactLayoutRef = useRef<MobileOrbitLayout | null>(null)
 
   const placeCards = useCallback(
     (angle: number) => {
@@ -68,15 +70,16 @@ export function MobileOrbitStage({
         const radians = ((module.angle + angle) * Math.PI) / 180
         const lateral = Math.sin(radians)
         const front = -Math.cos(radians)
-        const rawDepth = clamp((front + 1) / 2, 0, 1)
-        const x = lateral * radiusX
+        const compactPoint = compactLayoutRef.current ? mobileOrbitPoint(module.angle + angle, compactLayoutRef.current) : null
+        const rawDepth = compactPoint?.depth ?? clamp((front + 1) / 2, 0, 1)
+        const x = compactPoint?.x ?? lateral * radiusX
         // A shallower rear arc brings the distant cards toward the logo rather
         // than drawing a full circle. Both arcs meet continuously at the sides.
         const arcY = front < 0
           ? Math.tanh(front * 2.5) / Math.tanh(2.5) * MOBILE_ORBIT.backLift
           : front * (2 - front) * MOBILE_ORBIT.verticalLift
-        const y = (arcY + lateral * MOBILE_ORBIT.tilt) * heightScale
-        const scale = mix(MOBILE_ORBIT.sideScale, front >= 0 ? MOBILE_ORBIT.frontScale : MOBILE_ORBIT.backScale, front ** 4) * heightScale
+        const y = compactPoint?.y ?? (arcY + lateral * MOBILE_ORBIT.tilt) * heightScale
+        const scale = compactPoint?.scale ?? mix(MOBILE_ORBIT.sideScale, front >= 0 ? MOBILE_ORBIT.frontScale : MOBILE_ORBIT.backScale, front ** 4) * heightScale
         const baseOpacity = orbitOpacity(rawDepth)
         const opacity = authOpen
           ? baseOpacity * 0.22
@@ -86,9 +89,11 @@ export function MobileOrbitStage({
               : baseOpacity * 0.24
             : baseOpacity
 
-        element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, 0) rotateY(${round(-lateral * 10)}deg) scale(${round(scale, 4)})`
+        element.style.transform = compactPoint
+          ? `translate3d(calc(-50% + ${round(x)}px), calc(-50% + ${round(y)}px), 0) scale(${round(scale, 4)})`
+          : `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, 0) rotateY(${round(-lateral * 10)}deg) scale(${round(scale, 4)})`
         element.style.opacity = round(opacity, 4).toString()
-        element.style.filter = `brightness(${round(orbitBrightness(rawDepth), 4)}) saturate(${round(0.82 + rawDepth * 0.18, 4)})`
+        element.style.filter = compactPoint ? "none" : `brightness(${round(orbitBrightness(rawDepth), 4)}) saturate(${round(0.82 + rawDepth * 0.18, 4)})`
         element.style.zIndex = Math.round(front * 1000).toString()
         element.dataset.depth = String(round(rawDepth, 4))
         const button = element.querySelector("button")
@@ -112,6 +117,18 @@ export function MobileOrbitStage({
   const measureStage = useCallback(() => {
     const stage = stageRef.current
     if (!stage) return
+    if (window.matchMedia("(max-width: 640px)").matches) {
+      const card = cardRefs.current[0]?.querySelector("button")
+      if (!card) return
+      const layout = createMobileOrbitLayout(stage.clientWidth, stage.clientHeight, card.offsetWidth, card.offsetHeight)
+      compactLayoutRef.current = layout
+      stage.style.setProperty("--mobile-logo-width", `${layout.logoWidth * layout.fit}px`)
+      stage.style.setProperty("--mobile-scene-lift", "0px")
+      stage.style.setProperty("--mobile-orbit-width", `${layout.radiusX * 2 * layout.fit}px`)
+      placeCards(orbitAngle.get())
+      return
+    }
+    compactLayoutRef.current = null
     const heightScale = clamp(stage.clientHeight / 370, 0.5, 1)
     const radiusX = Math.min(MOBILE_ORBIT.radiusX, stage.clientWidth / 2 - 46) * heightScale
     geometryRef.current = { radiusX, heightScale }
@@ -183,7 +200,7 @@ export function MobileOrbitStage({
               backfaceVisibility: "hidden",
               WebkitBackfaceVisibility: "hidden",
               transition: frozen ? "opacity 240ms cubic-bezier(0.22, 1, 0.36, 1)" : "none",
-              willChange: "transform, opacity",
+              willChange: frozen ? "auto" : "transform",
             }}
           >
             <button
