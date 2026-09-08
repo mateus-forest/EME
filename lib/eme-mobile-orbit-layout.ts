@@ -8,6 +8,14 @@ const POINTS = [
 export type MobileOrbitLayout = {
   radiusX: number; radiusY: number; logoWidth: number
   cardWidth: number; cardHeight: number; fit: number
+  centerX: number; centerY: number
+}
+
+// Center of the upper white platform in the existing 1658×949 background asset.
+// Account for object-cover and the mobile object-position (50% 38%).
+export function mobilePlatformContactY(backgroundWidth: number, backgroundHeight: number) {
+  const renderedHeight = Math.max(backgroundWidth / 1658, backgroundHeight / 949) * 949
+  return (backgroundHeight - renderedHeight) * .38 + renderedHeight * .605
 }
 
 const spline = (a: number, b: number, c: number, d: number, t: number) =>
@@ -34,8 +42,8 @@ export function mobileOrbitPoint(angle: number, layout: MobileOrbitLayout) {
   return { x: x * layout.fit, y: y * layout.fit, scale: scale * layout.fit, depth }
 }
 
-export function createMobileOrbitLayout(width: number, height: number, cardWidth: number, cardHeight: number): MobileOrbitLayout {
-  const layout = { radiusX: Math.min(172, width * .37), radiusY: Math.min(96, height * .23), logoWidth: Math.min(180, width * .43), cardWidth, cardHeight, fit: 1 }
+export function createMobileOrbitLayout(width: number, height: number, cardWidth: number, cardHeight: number, platformY?: number): MobileOrbitLayout {
+  const layout = { radiusX: Math.min(172, width * .37), radiusY: Math.min(96, height * .23), logoWidth: Math.min(180, width * .43), cardWidth, cardHeight, fit: 1, centerX: width / 2, centerY: height * .42 }
   let extentX = 0
   let extentY = 0
   // Reserve a little extra clearance between measured extrema and the stage.
@@ -44,6 +52,11 @@ export function createMobileOrbitLayout(width: number, height: number, cardWidth
     extentX = Math.max(extentX, Math.abs(p.x) + cardWidth * p.scale / 2)
     extentY = Math.max(extentY, Math.abs(p.y) + cardHeight * p.scale / 2)
   }
-  layout.fit = Math.min(1, (width - 12) / (2 * extentX), (height - 12) / (2 * extentY))
+  const contactY = Math.max(12, Math.min(height - 12, platformY ?? height * .5))
+  const logoHalfHeight = layout.logoWidth / 5
+  layout.fit = Math.max(.01, Math.min(1, (width - 12) / (2 * extentX),
+    (contactY - 6) / (extentY + logoHalfHeight),
+    (height - 6 - contactY) / (extentY - logoHalfHeight)))
+  layout.centerY = contactY - logoHalfHeight * layout.fit
   return layout
 }

@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test"
 import assert from "node:assert/strict"
-import { createMobileOrbitLayout, mobileOrbitPoint } from "@/lib/eme-mobile-orbit-layout"
+import { createMobileOrbitLayout, mobileOrbitPoint, mobilePlatformContactY } from "@/lib/eme-mobile-orbit-layout"
 
 const widths = [375, 390, 393, 430, 456]
 test("COS mantém abertura, Escape e retorno de foco no rodapé e desktop", async ({ page }) => {
@@ -27,6 +27,8 @@ for (const width of widths) {
     for (const height of [270, 360, 480]) {
       const cardWidth = Math.min(100, Math.max(82, width * .22))
       const layout = createMobileOrbitLayout(width - 32, height, cardWidth, cardWidth * 160 / 118)
+      expect(layout.centerX).toBe((width - 32) / 2)
+      expect(layout.centerY).toBeLessThan(height / 2)
       let previous = mobileOrbitPoint(-.2, layout)
       for (let angle = 0; angle <= 360; angle += .2) {
         const p = mobileOrbitPoint(angle, layout)
@@ -36,9 +38,32 @@ for (const width of widths) {
         assert(clear, `logo overlap at ${angle}`)
         assert(Math.abs(p.x) + halfWidth < (width - 32) / 2)
         assert(Math.abs(p.y) + halfHeight < height / 2)
+        assert(layout.centerY + p.y - halfHeight >= 5)
+        assert(layout.centerY + p.y + halfHeight <= height - 5)
         assert(Math.hypot(p.x - previous.x, p.y - previous.y) < 3)
         previous = p
       }
+    }
+  })
+
+  test(`logo ancorado à plataforma durante resize: ${width}px`, async ({ page }) => {
+    test.setTimeout(90_000)
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await page.setViewportSize({ width, height: 844 })
+    await page.goto("/")
+    await expect(page.locator("[data-mobile-orbit-logo]")).toBeVisible()
+    for (const height of [740, 844, 932, 844]) {
+      await page.setViewportSize({ width, height })
+      await expect.poll(async () => {
+        const logo = (await page.locator("[data-mobile-orbit-logo]").boundingBox())!
+        const background = (await page.locator('img[src="/images/eme-landing-hero-2026-08-13.webp"]').boundingBox())!
+        return Math.abs(logo.y + logo.height - background.y - mobilePlatformContactY(background.width, background.height))
+      }).toBeLessThan(1)
+      const logo = (await page.locator("[data-mobile-orbit-logo]").boundingBox())!
+      const stage = (await page.locator("[data-mobile-orbit-stage]").boundingBox())!
+      expect(logo.x + logo.width / 2).toBeCloseTo(stage.x + stage.width / 2, 0)
+      expect(logo.y + logo.height / 2).toBeLessThan(stage.y + stage.height / 2)
+      expect(stage.height).toBeLessThanOrEqual(460)
     }
   })
 

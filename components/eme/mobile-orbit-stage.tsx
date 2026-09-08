@@ -8,7 +8,7 @@ import { emeModules } from "@/lib/eme-modules"
 import { orbitBrightness, orbitOpacity } from "@/lib/eme-orbit-presentation"
 import heroMaterial from "./hero-material.module.css"
 import mobileStyles from "./landing-mobile-refinement.module.css"
-import { createMobileOrbitLayout, mobileOrbitPoint, type MobileOrbitLayout } from "@/lib/eme-mobile-orbit-layout"
+import { createMobileOrbitLayout, mobileOrbitPoint, mobilePlatformContactY, type MobileOrbitLayout } from "@/lib/eme-mobile-orbit-layout"
 
 const MOBILE_ORBIT = {
   radiusX: 164,
@@ -94,7 +94,7 @@ export function MobileOrbitStage({
           : `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, 0) rotateY(${round(-lateral * 10)}deg) scale(${round(scale, 4)})`
         element.style.opacity = round(opacity, 4).toString()
         element.style.filter = compactPoint ? "none" : `brightness(${round(orbitBrightness(rawDepth), 4)}) saturate(${round(0.82 + rawDepth * 0.18, 4)})`
-        element.style.zIndex = Math.round(front * 1000).toString()
+        element.style.zIndex = Math.round((compactPoint ? rawDepth * 2 - 1 : front) * 1000).toString()
         element.dataset.depth = String(round(rawDepth, 4))
         const button = element.querySelector("button")
         if (button) button.style.pointerEvents = !selectedId && !authOpen && rawDepth >= 0.42 ? "auto" : "none"
@@ -120,10 +120,18 @@ export function MobileOrbitStage({
     if (window.matchMedia("(max-width: 640px)").matches) {
       const card = cardRefs.current[0]?.querySelector("button")
       if (!card) return
-      const layout = createMobileOrbitLayout(stage.clientWidth, stage.clientHeight, card.offsetWidth, card.offsetHeight)
+      const background = stage.closest("main")?.querySelector<HTMLImageElement>('img[src="/images/eme-landing-hero-2026-08-13.webp"]')
+      const backgroundBox = background?.getBoundingClientRect()
+      const stageBox = stage.getBoundingClientRect()
+      const platformY = backgroundBox
+        ? backgroundBox.top + mobilePlatformContactY(backgroundBox.width, backgroundBox.height) - stageBox.top
+        : undefined
+      const layout = createMobileOrbitLayout(stage.clientWidth, stage.clientHeight, card.offsetWidth, card.offsetHeight, platformY)
       compactLayoutRef.current = layout
       stage.style.setProperty("--mobile-logo-width", `${layout.logoWidth * layout.fit}px`)
       stage.style.setProperty("--mobile-scene-lift", "0px")
+      stage.style.setProperty("--mobile-center-x", `${layout.centerX}px`)
+      stage.style.setProperty("--mobile-center-y", `${layout.centerY}px`)
       stage.style.setProperty("--mobile-orbit-width", `${layout.radiusX * 2 * layout.fit}px`)
       placeCards(orbitAngle.get())
       return
@@ -144,7 +152,13 @@ export function MobileOrbitStage({
 
   useEffect(() => {
     const observer = new ResizeObserver(measureStage)
-    if (stageRef.current) observer.observe(stageRef.current)
+    if (stageRef.current) {
+      observer.observe(stageRef.current)
+      const main = stageRef.current.closest("main")
+      if (main) observer.observe(main)
+      const hero = main?.querySelector("[data-mobile-hero-zone]")
+      if (hero) observer.observe(hero)
+    }
     return () => observer.disconnect()
   }, [measureStage])
 
@@ -156,7 +170,7 @@ export function MobileOrbitStage({
       data-mobile-orbit-stage
       className="relative flex h-full w-full items-center justify-center"
     >
-      <div className="relative" style={{ transformStyle: "preserve-3d", transform: "translateY(var(--mobile-scene-lift, -8px))" }}>
+      <div className={`${mobileStyles.orbitCenter} relative`} style={{ transformStyle: "preserve-3d", transform: "translate3d(0, var(--mobile-scene-lift, -8px), 0)" }}>
         <svg
           aria-hidden
           focusable="false"
