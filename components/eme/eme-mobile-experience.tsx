@@ -218,9 +218,16 @@ export function EmeMobileExperience({
         />
         <LandingProductIntro />
 
+        {!selected && !authOpen ? (
+          <aside data-mobile-landing-activity aria-label="Agora no EME" className={landingMobileStyles.activity}>
+            <span className={landingMobileStyles.activityDot} aria-hidden />
+            <span>Agora no EME</span>
+          </aside>
+        ) : null}
+
         <div
           ref={stageRef}
-          className="absolute inset-0 flex touch-none translate-y-[10px] items-center justify-center transition-opacity duration-400 ease-out"
+          className={`${landingMobileStyles.orbitArea} absolute inset-x-0 flex touch-none items-center justify-center transition-opacity duration-400 ease-out`}
           style={{ opacity: mounted ? 1 : 0 }}
         >
           {mounted ? (

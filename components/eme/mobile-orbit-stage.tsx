@@ -10,17 +10,14 @@ import heroMaterial from "./hero-material.module.css"
 
 const MOBILE_ORBIT = {
   radiusX: 195,
-  verticalLift: 126,
-  sideLift: 18,
-  offsetY: 22,
-  radiusZ: 92,
-  backScale: 0.76,
-  frontScale: 1,
+  verticalLift: 170,
+  sideScale: 0.58,
+  backScale: 0.68,
+  frontScale: 0.86,
 } as const
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
 const mix = (from: number, to: number, progress: number) => from + (to - from) * progress
-const smoothstep = (value: number) => value * value * (3 - 2 * value)
 const round = (value: number, digits = 2) => Number(value.toFixed(digits))
 
 type MobileOrbitStageProps = {
@@ -34,8 +31,9 @@ type MobileOrbitStageProps = {
 
 /**
  * A purpose-built phone composition. It deliberately does not reuse the
- * desktop ellipse: the shallower vertical curve, smaller physical cards and
- * tighter depth range keep adjacent cards separated without large sweeps.
+ * desktop ellipse: a wider-sided curve reserves an exclusion area for the logo.
+ * Depth is expressed through scale, opacity and stacking, without perspective
+ * expanding a card's hitbox into the logo or outside the phone viewport.
  * MotionValue updates are written straight to compositor-friendly styles so
  * the orbit does not trigger a React render on every animation frame.
  */
@@ -49,15 +47,14 @@ export function MobileOrbitStage({
 }: MobileOrbitStageProps) {
   const cardRefs = useRef<Array<HTMLDivElement | null>>([])
   const lastActiveIndexRef = useRef(-1)
+  const stageRef = useRef<HTMLDivElement>(null)
+  const geometryRef = useRef({ radiusX: 148, heightScale: 1 })
 
   const placeCards = useCallback(
     (angle: number) => {
       let activeIndex = 0
       let activeDepth = -Infinity
-      // Short landscape / zoom-reflow viewports need room below the orbital plane.
-      // Normal phone composition and all gesture/spring parameters are unchanged.
-      const shortViewport = clamp((window.innerHeight - 260) / 440, 0.5, 1)
-      const heightScale = mix(0.7, 1, (shortViewport - 0.5) * 2)
+      const { radiusX, heightScale } = geometryRef.current
 
       emeModules.forEach((module, index) => {
         const element = cardRefs.current[index]
@@ -67,11 +64,9 @@ export function MobileOrbitStage({
         const lateral = Math.sin(radians)
         const front = -Math.cos(radians)
         const rawDepth = clamp((front + 1) / 2, 0, 1)
-        const depth = smoothstep(rawDepth)
-        const x = lateral * Math.min(MOBILE_ORBIT.radiusX, (window.innerWidth - 152) / 2)
-        const y = (front * MOBILE_ORBIT.verticalLift + (1 - Math.abs(front)) * MOBILE_ORBIT.sideLift + MOBILE_ORBIT.offsetY) * shortViewport
-        const z = front * MOBILE_ORBIT.radiusZ
-        const scale = mix(MOBILE_ORBIT.backScale, MOBILE_ORBIT.frontScale, depth) * heightScale
+        const x = lateral * radiusX
+        const y = front * (2 - Math.abs(front)) * MOBILE_ORBIT.verticalLift * heightScale
+        const scale = mix(MOBILE_ORBIT.sideScale, front >= 0 ? MOBILE_ORBIT.frontScale : MOBILE_ORBIT.backScale, front * front) * heightScale
         const baseOpacity = orbitOpacity(rawDepth)
         const opacity = authOpen
           ? baseOpacity * 0.22
@@ -81,7 +76,7 @@ export function MobileOrbitStage({
               : baseOpacity * 0.24
             : baseOpacity
 
-        element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, ${round(z)}px) rotateY(${round(-lateral * 7)}deg) scale(${round(scale, 4)})`
+        element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, 0) rotateY(${round(-lateral * 7)}deg) scale(${round(scale, 4)})`
         element.style.opacity = round(opacity, 4).toString()
         element.style.filter = `brightness(${round(orbitBrightness(rawDepth), 4)}) saturate(${round(0.82 + rawDepth * 0.18, 4)})`
         element.style.zIndex = Math.round(front * 1000).toString()
@@ -104,23 +99,32 @@ export function MobileOrbitStage({
 
   useMotionValueEvent(orbitAngle, "change", placeCards)
 
-  useLayoutEffect(() => {
+  const measureStage = useCallback(() => {
+    const stage = stageRef.current
+    if (!stage) return
+    const heightScale = clamp(stage.clientHeight / 480, 0.5, 1)
+    geometryRef.current = { radiusX: Math.min(MOBILE_ORBIT.radiusX, stage.clientWidth / 2 - 47), heightScale }
+    stage.style.setProperty("--mobile-logo-width", `${Math.min(200, stage.clientWidth * 0.46) * heightScale}px`)
     placeCards(orbitAngle.get())
   }, [orbitAngle, placeCards])
 
+  useLayoutEffect(() => {
+    measureStage()
+  }, [measureStage])
+
   useEffect(() => {
-    const onResize = () => placeCards(orbitAngle.get())
-    window.addEventListener("resize", onResize)
-    return () => window.removeEventListener("resize", onResize)
-  }, [orbitAngle, placeCards])
+    const observer = new ResizeObserver(measureStage)
+    if (stageRef.current) observer.observe(stageRef.current)
+    return () => observer.disconnect()
+  }, [measureStage])
 
   const frozen = selectedId != null || authOpen
 
   return (
     <div
+      ref={stageRef}
       data-mobile-orbit-stage
       className="relative flex h-full w-full items-center justify-center"
-      style={{ perspective: "1080px", perspectiveOrigin: "50% 45%" }}
     >
       <div className="relative" style={{ transformStyle: "preserve-3d" }}>
         <div
@@ -133,11 +137,11 @@ export function MobileOrbitStage({
           className="pointer-events-none absolute left-1/2 top-1/2"
           style={{
             zIndex: 60,
-            transform: "translate(-50%, -50%) translateY(40px)",
+            transform: "translate(-50%, -50%)",
             transformStyle: "preserve-3d",
           }}
         >
-          <div className={`${heroMaterial.logo} relative aspect-[5/2] w-[254px]`}>
+          <div data-mobile-orbit-logo className={`${heroMaterial.logo} relative aspect-[5/2]`} style={{ width: "var(--mobile-logo-width, 180px)" }}>
             <img
               src="/images/eme-logo-3d-premium.webp"
               alt="EME"
