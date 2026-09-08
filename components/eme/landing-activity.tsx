@@ -24,10 +24,12 @@ function isActivityMetric(value: unknown): value is LandingActivityMetric {
 export function LandingActivity({
   authOpen = false,
   compact = false,
+  showWhenEmpty = false,
   className = "",
 }: {
   authOpen?: boolean
   compact?: boolean
+  showWhenEmpty?: boolean
   className?: string
 }) {
   const [metrics, setMetrics] = useState<LandingActivityMetric[]>([])
@@ -70,7 +72,7 @@ export function LandingActivity({
     return () => window.clearInterval(timer)
   }, [authOpen, metrics.length, reducedMotion])
 
-  if (metrics.length === 0) return null
+  if (metrics.length === 0 && !showWhenEmpty) return null
 
   const metric = metrics[Math.min(activeIndex, metrics.length - 1)]
 
@@ -81,7 +83,7 @@ export function LandingActivity({
       className={`transition-opacity duration-500 motion-reduce:transition-none ${className}`.trim()}
       style={{ opacity: authOpen ? 0 : 1, pointerEvents: authOpen ? "none" : undefined }}
       data-testid="landing-activity"
-      data-active-metric={metric.id}
+      data-active-metric={metric?.id}
     >
       <div className="flex flex-wrap items-center gap-2">
         <div className="eme-landing-glass-chip inline-flex items-center gap-2 rounded-full border border-white/70 bg-white/70 px-3 py-1.5 shadow-[0_8px_24px_rgba(36,55,45,0.06)] backdrop-blur-md">
@@ -107,7 +109,7 @@ export function LandingActivity({
         </a>
       </div>
 
-      <div className={compact ? "mt-2.5 min-h-[54px] max-w-[250px]" : "mt-4 min-h-[72px] max-w-[370px]"}>
+      {metric ? <div className={compact ? "mt-2.5 min-h-[54px] max-w-[250px]" : "mt-4 min-h-[72px] max-w-[370px]"}>
         <AnimatePresence mode="wait" initial={false}>
           <motion.div
             key={metric.id}
@@ -124,7 +126,7 @@ export function LandingActivity({
             </p>
           </motion.div>
         </AnimatePresence>
-      </div>
+      </div> : null}
 
       {metrics.length > 1 ? (
         <div className={compact ? "mt-2 flex items-center gap-2" : "mt-3 flex items-center gap-2.5"} aria-label="Indicadores disponíveis">

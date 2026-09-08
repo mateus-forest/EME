@@ -8,34 +8,42 @@
     z-index: 65;
     left: max(20px, env(safe-area-inset-left));
     top: calc(env(safe-area-inset-top) + 210px);
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-height: 24px;
-    padding: 4px 10px;
-    border: 1px solid #dce7df;
-    border-radius: 99px;
-    background: #f7faf8;
-    box-shadow: inset 0 1px 0 #fff, 0 2px 5px rgb(24 57 38 / 7%);
-    color: #3d6150;
-    font-size: 8px;
-    font-weight: 600;
-    letter-spacing: .14em;
-    text-transform: uppercase;
-    pointer-events: none;
+    width: calc(100% - 40px);
+    max-width: 380px;
   }
 
-  .activityDot {
-    width: 6px;
-    height: 6px;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: #188448;
+  .activity :global(.eme-landing-glass-chip) {
+    min-height: 24px;
+    padding: 4px 9px;
+    font-size: 8px;
+    background: #f7faf8;
+    backdrop-filter: none;
+  }
+
+  .activity :global(.eme-landing-glass-chip) span:last-child {
+    font-size: 8px;
+    letter-spacing: .14em;
+  }
+
+  .activity aside > div:nth-child(2) {
+    max-width: 100%;
+    min-height: 40px;
+    margin-top: 8px;
+  }
+
+  .activity p:first-child {
+    font-size: 12px;
+    line-height: 1.35;
+  }
+
+  .activity p + p {
+    font-size: 10px;
+    line-height: 1.35;
   }
 
   .orbitArea {
-    top: calc(env(safe-area-inset-top) + 250px);
-    bottom: calc(env(safe-area-inset-bottom) + 128px);
+    top: calc(env(safe-area-inset-top) + 320px);
+    bottom: calc(env(safe-area-inset-bottom) + 144px);
   }
 
   .mobileLanding [data-module-card="mobile"] h3 {
@@ -91,5 +99,5 @@
 
 @media (max-width: 1023px) and (max-height: 700px) {
   .activity { top: calc(env(safe-area-inset-top) + 188px); }
-  .orbitArea { top: calc(env(safe-area-inset-top) + 224px); }
+  .orbitArea { top: calc(env(safe-area-inset-top) + 294px); }
 }

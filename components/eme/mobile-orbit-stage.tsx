@@ -9,9 +9,11 @@ import { orbitBrightness, orbitOpacity } from "@/lib/eme-orbit-presentation"
 import heroMaterial from "./hero-material.module.css"
 
 const MOBILE_ORBIT = {
-  radiusX: 195,
-  verticalLift: 170,
-  sideScale: 0.58,
+  radiusX: 160,
+  verticalLift: 136,
+  backLift: 110,
+  tilt: 4,
+  sideScale: 0.52,
   backScale: 0.68,
   frontScale: 0.86,
 } as const
@@ -65,8 +67,13 @@ export function MobileOrbitStage({
         const front = -Math.cos(radians)
         const rawDepth = clamp((front + 1) / 2, 0, 1)
         const x = lateral * radiusX
-        const y = front * (2 - Math.abs(front)) * MOBILE_ORBIT.verticalLift * heightScale
-        const scale = mix(MOBILE_ORBIT.sideScale, front >= 0 ? MOBILE_ORBIT.frontScale : MOBILE_ORBIT.backScale, front * front) * heightScale
+        // A shallower rear arc brings the distant cards toward the logo rather
+        // than drawing a full circle. Both arcs meet continuously at the sides.
+        const arcY = front < 0
+          ? Math.tanh(front * 2.5) / Math.tanh(2.5) * MOBILE_ORBIT.backLift
+          : front * (2 - front) * MOBILE_ORBIT.verticalLift
+        const y = (arcY + lateral * MOBILE_ORBIT.tilt) * heightScale
+        const scale = mix(MOBILE_ORBIT.sideScale, front >= 0 ? MOBILE_ORBIT.frontScale : MOBILE_ORBIT.backScale, front ** 4) * heightScale
         const baseOpacity = orbitOpacity(rawDepth)
         const opacity = authOpen
           ? baseOpacity * 0.22
@@ -102,9 +109,9 @@ export function MobileOrbitStage({
   const measureStage = useCallback(() => {
     const stage = stageRef.current
     if (!stage) return
-    const heightScale = clamp(stage.clientHeight / 480, 0.5, 1)
-    geometryRef.current = { radiusX: Math.min(MOBILE_ORBIT.radiusX, stage.clientWidth / 2 - 47), heightScale }
-    stage.style.setProperty("--mobile-logo-width", `${Math.min(200, stage.clientWidth * 0.46) * heightScale}px`)
+    const heightScale = clamp(stage.clientHeight / 370, 0.5, 1)
+    geometryRef.current = { radiusX: Math.min(MOBILE_ORBIT.radiusX, stage.clientWidth / 2 - 54) * heightScale, heightScale }
+    stage.style.setProperty("--mobile-logo-width", `${Math.min(200, stage.clientWidth * 0.48) * heightScale}px`)
     placeCards(orbitAngle.get())
   }, [orbitAngle, placeCards])
 

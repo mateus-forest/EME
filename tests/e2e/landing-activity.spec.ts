@@ -116,4 +116,38 @@ test.describe("atividade real da landing", () => {
     )
     expect(hasHorizontalOverflow).toBe(false)
   })
+
+  test("exibe os conteúdos e mantém espaço para a órbita mobile", async ({ page }) => {
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.emulateMedia({ reducedMotion: "reduce" })
+    await page.route("**/api/landing/activity", (route) =>
+      route.fulfill({ json: { metrics: testMetrics(), generatedAt: new Date().toISOString() } }),
+    )
+    await page.goto("/")
+    const activity = page.getByTestId("landing-activity")
+    await expect(activity.getByRole("link", { name: "Abrir Marketplace EME" })).toBeVisible()
+    for (const [index, metric] of testMetrics().entries()) {
+      await activity.getByRole("button", { name: `Mostrar indicador ${index + 1} de 2` }).click()
+      await expect(activity.getByText(metric.title)).toBeVisible()
+      await expect(activity.getByText(metric.subtitle)).toBeVisible()
+      const panel = await activity.boundingBox()
+      const orbit = await page.locator("[data-mobile-orbit-stage]").boundingBox()
+      expect(panel).not.toBeNull()
+      expect(orbit).not.toBeNull()
+      expect(panel!.y + panel!.height).toBeLessThan(orbit!.y)
+    }
+    await expect(page.locator(".eme-swipe-hint")).toHaveCount(0)
+    await expect(page.locator("[data-mobile-orbit-pagination]")).toBeVisible()
+  })
+
+  test("preserva o selo mobile sem inventar métricas e mantém o desktop vazio", async ({ page }) => {
+    await page.route("**/api/landing/activity", (route) => route.fulfill({ json: { metrics: [] } }))
+    await page.setViewportSize({ width: 390, height: 844 })
+    await page.goto("/")
+    const activity = page.getByTestId("landing-activity")
+    await expect(activity.getByText("Agora no EME", { exact: true })).toBeVisible()
+    await expect(activity.locator("p")).toHaveCount(0)
+    await page.setViewportSize({ width: 1440, height: 900 })
+    await expect(activity).toHaveCount(0)
+  })
 })

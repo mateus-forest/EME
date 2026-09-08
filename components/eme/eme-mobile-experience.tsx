@@ -12,6 +12,7 @@ import {
   AcceleratorHero,
 } from "@/components/eme/landing-accelerator"
 import { LandingProductIntro } from "./landing-product-intro"
+import { LandingActivity } from "./landing-activity"
 import { LandingJourney } from "./landing-journey"
 import { nearestFrontAngle } from "@/lib/eme-orbit-presentation"
 import { MobileOrbitStage } from "@/components/eme/mobile-orbit-stage"
@@ -218,12 +219,9 @@ export function EmeMobileExperience({
         />
         <LandingProductIntro />
 
-        {!selected && !authOpen ? (
-          <aside data-mobile-landing-activity aria-label="Agora no EME" className={landingMobileStyles.activity}>
-            <span className={landingMobileStyles.activityDot} aria-hidden />
-            <span>Agora no EME</span>
-          </aside>
-        ) : null}
+        <div data-mobile-landing-activity className={landingMobileStyles.activity}>
+          <LandingActivity compact showWhenEmpty authOpen={sceneBlocking} />
+        </div>
 
         <div
           ref={stageRef}
@@ -282,16 +280,6 @@ export function EmeMobileExperience({
           </div>
         ) : null}
 
-        {!selected && !authOpen ? (
-          <div
-            className="pointer-events-none absolute bottom-[max(5.5rem,calc(env(safe-area-inset-bottom)+4rem))] left-5 z-10"
-            aria-hidden
-          >
-            <div className={`${heroMaterial.swipe} flex h-[22px] w-9 items-center justify-center rounded-full border border-graphite/30`}>
-              <span className="eme-swipe-hint h-1.5 w-1.5 rounded-full bg-graphite/55" />
-            </div>
-          </div>
-        ) : null}
       </motion.div>
 
       <AnimatePresence initial={false}>
