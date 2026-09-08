@@ -1,6 +1,8 @@
 import { expect, test, type Page } from "@playwright/test"
 
 import { loginAsBroker } from "./helpers/auth"
+import sharp from "sharp"
+import { assessPropertyPublicationReadiness, propertyPublicationBlockedResponse } from "@/lib/property-publication-readiness"
 
 const now = "2026-08-13T12:00:00.000Z"
 
@@ -170,6 +172,76 @@ async function mockBrokerSession(page: Page) {
 }
 
 test.describe("estado dos modais de clientes e imóveis", () => {
+  for (const width of [1440, 390]) {
+    test(`fotos de publicação: dimensões, capa e nova tentativa em ${width}px`, async ({ page }, testInfo) => {
+      test.setTimeout(90_000)
+      await page.setViewportSize({ width, height: 900 })
+      // Every API is intercepted: this regression test must never write to real accounts.
+      await page.route("**/api/**", (route) => route.fulfill({ json: {} }))
+      await mockBrokerSession(page)
+      await mockPropertyPageDependencies(page)
+      const square = await sharp({ create: { width: 1600, height: 1600, channels: 3, background: "#bdc9bc" } }).jpeg().toBuffer()
+      const portrait = await sharp({ create: { width: 1200, height: 1600, channels: 3, background: "#b3c8b3" } }).jpeg().toBuffer()
+      const landscape = await sharp({ create: { width: 1200, height: 675, channels: 3, background: "#b8c9b4" } }).jpeg().toBuffer()
+      const urls = ["/qa-photo-0.jpg", "/qa-photo-1.jpg", "/qa-photo-2.jpg", "/qa-photo-3.jpg"]
+      let current = { ...property, images: urls, marketplacePublished: false }
+      await page.route("**/qa-photo-*.jpg", (route) => route.fulfill({ contentType: "image/jpeg", body: route.request().url().includes("square") ? square : route.request().url().includes("landscape") ? landscape : portrait }))
+      await page.route("**/api/properties/me**", (route) => route.fulfill({ json: { properties: [current] } }))
+      await page.route(`**/api/properties/${property.id}`, async (route) => {
+        current = { ...current, images: route.request().postDataJSON().images ?? current.images }
+        await route.fulfill({ json: { property: current } })
+      })
+      await page.route(`**/api/properties/${property.id}/images`, async (route) => {
+        current = { ...current, images: [...current.images, "/qa-photo-square.jpg"] }
+        await route.fulfill({ json: { property: current } })
+      })
+      const responses: number[] = []
+      await page.route(`**/api/properties/${property.id}/marketplace`, async (route) => {
+        const readiness = await assessPropertyPublicationReadiness({
+          ...current, description: "Descrição completa do imóvel para teste de publicação. Ambientes organizados, boa iluminação e localização central com acesso aos serviços do bairro.",
+          type: "APARTMENT", purpose: "SALE", imageUrls: current.images, legalData: { privateArea: "80" }, broker: { creciValidationStatus: "VERIFIED" },
+        }, { inspectImage: async (url) => {
+          const buffer = url.includes("square") ? square : url.includes("landscape") ? landscape : portrait
+          const metadata = await sharp(buffer).metadata()
+          return { valid: true, format: metadata.format, width: metadata.width, height: metadata.height }
+        } })
+        if (!readiness.marketplaceReady) {
+          responses.push(422)
+          return route.fulfill({ status: 422, json: propertyPublicationBlockedResponse(readiness, "marketplace") })
+        }
+        responses.push(200)
+        current = { ...current, marketplacePublished: true }
+        return route.fulfill({ json: { property: current } })
+      })
+      await page.goto("/corretor/imoveis", { waitUntil: "domcontentloaded" })
+      const actions = page.getByRole("button", { name: `Mais ações para ${property.title}` })
+      await actions.click()
+      await page.getByRole("menuitem", { name: "Publicar no Marketplace" }).click()
+      await expect.poll(() => responses).toEqual([422])
+      const dialog = page.getByRole("dialog")
+      await expect(dialog.getByText(/Para a capa, use uma foto horizontal ou quadrada/)).toBeVisible()
+      await expect(dialog.getByText(/1200 × 1600 px · vertical/)).toHaveCount(4)
+      await dialog.getByText("Foto 4", { exact: true }).scrollIntoViewIfNeeded()
+      await expect(dialog.getByText("Foto 4", { exact: true })).toBeInViewport()
+      await dialog.getByTestId("publication-readiness-issues").scrollIntoViewIfNeeded()
+      expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath(`publication-issues-${width}.png`), animations: "disabled" })
+      await dialog.getByRole("button", { name: "Corrigir imóvel" }).click()
+      await expect(page.getByTestId("property-photo-1")).toContainText("1200 × 1600 px · vertical")
+      await expect(page.getByTestId("property-photo-2")).toContainText("1200 × 1600 px · vertical")
+      await expect(page.getByTestId("property-photo-1").getByRole("img")).toHaveCSS("object-fit", "contain")
+      await dialog.locator('input[type="file"][accept="image/jpeg,image/png,image/webp"]').setInputFiles({ name: "square.jpg", mimeType: "image/jpeg", buffer: square })
+      await expect(page.getByTestId("property-photo-5")).toContainText("Apta para capa do Marketplace.")
+      await dialog.getByRole("button", { name: "Usar foto 5 como capa" }).click()
+      await expect(page.getByTestId("property-photo-1")).toContainText("1600 × 1600 px · quadrada")
+      await dialog.getByRole("button", { name: "Salvar alterações" }).click()
+      await actions.click()
+      await page.getByRole("menuitem", { name: "Publicar no Marketplace" }).click()
+      await expect.poll(() => current.marketplacePublished).toBe(true)
+      expect(responses).toEqual([422, 200])
+    })
+  }
+
   test("status comercial persiste na edição e atualiza lista e filtro", async ({ page }) => {
     await loginAsBroker(page)
     let persistedClient = { ...client }

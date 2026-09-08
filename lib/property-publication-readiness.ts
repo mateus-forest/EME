@@ -1,6 +1,7 @@
 import type { CreciValidationStatus, PropertyType } from "@/lib/prisma-enums"
 import { isPlaceholderPropertyImage } from "@/lib/property-media"
 import { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
+import { describePropertyImage, MARKETPLACE_COVER_REQUIREMENT } from "@/lib/property-image-requirements"
 
 export { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
 
@@ -36,6 +37,15 @@ export type PropertyPublicationIssue = {
 export type PropertyChannelReadiness = {
   ready: boolean
   issues: PropertyPublicationIssue[]
+  photos?: PropertyPublicationPhoto[]
+}
+
+export type PropertyPublicationPhoto = {
+  index: number
+  width?: number
+  height?: number
+  coverEligible: boolean
+  message: string
 }
 
 export type PropertyPublicationReadiness = {
@@ -346,7 +356,10 @@ function imageIssue(index: number, inspection: PropertyImageInspection): Propert
     )
   }
   if (inspection.reason === "too_large") {
-    return issue("PHOTO_INVALID", `${photo} excede o limite aceito pelo EME.`, `images.${index}`)
+    return issue("PHOTO_INVALID", `${photo} excede o limite de ${PROPERTY_PUBLICATION_STANDARDS.marketplace.maximumImageBytes / (1024 * 1024)} MB para publicação.`, `images.${index}`)
+  }
+  if (inspection.reason === "unreachable") {
+    return issue("PHOTO_INVALID", `${photo} não pôde ser carregada para conferir as dimensões. Tente publicar novamente; se persistir, reenvie o arquivo original.`, `images.${index}`)
   }
   return issue("PHOTO_INVALID", `${photo} está quebrada, é um placeholder ou possui uma URL inválida.`, `images.${index}`)
 }
@@ -371,7 +384,14 @@ export async function assessPropertyPublicationReadiness(
   }
 
   const inspections = await Promise.all(images.map((url) => inspectImage(url)))
-  let hasHorizontalCover = false
+  const photos: PropertyPublicationPhoto[] = inspections.map((inspection, index) => {
+    if (!inspection.valid) return { index, coverEligible: false, message: imageIssue(index, inspection).message }
+    const width = inspection.width ?? 0
+    const height = inspection.height ?? 0
+    const details = describePropertyImage(width, height)
+    return { index, width, height, coverEligible: details.coverEligible, message: `${details.dimensions}. ${details.status}` }
+  })
+  let hasEligibleCover = false
   let validImageCount = 0
 
   inspections.forEach((inspection, index) => {
@@ -380,7 +400,7 @@ export async function assessPropertyPublicationReadiness(
         index === 0
           ? issue(
               "PRIMARY_PHOTO_INVALID",
-              "A foto principal está quebrada, é um placeholder ou possui uma URL inválida.",
+              `${imageIssue(index, inspection).message} Esta é a foto principal.`,
               "images.0",
             )
           : imageIssue(index, inspection),
@@ -391,24 +411,20 @@ export async function assessPropertyPublicationReadiness(
     validImageCount += 1
     const width = inspection.width ?? 0
     const height = inspection.height ?? 0
-    const longEdge = Math.max(width, height)
-    const shortEdge = Math.min(width, height)
-    const hasMinimumResolution =
-      longEdge >= PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumImageLongEdge &&
-      shortEdge >= PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumImageShortEdge
+    const { hasMinimumResolution, coverEligible, dimensions, status } = describePropertyImage(width, height)
 
     if (!hasMinimumResolution) {
       marketplaceIssues.push(
         issue(
           "PHOTO_RESOLUTION_TOO_LOW",
-          `A foto ${index + 1} precisa ter pelo menos ${PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumImageLongEdge} × ${PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumImageShortEdge} px em orientação equivalente.`,
+          `A foto ${index + 1} possui ${dimensions}. ${status}`,
           `images.${index}`,
         ),
       )
       return
     }
 
-    if (width > height) hasHorizontalCover = true
+    if (coverEligible) hasEligibleCover = true
   })
 
   if (images.length >= PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos && validImageCount < PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos) {
@@ -420,17 +436,19 @@ export async function assessPropertyPublicationReadiness(
       ),
     )
   }
-  if (images.length > 0 && !hasHorizontalCover) {
+  if (images.length > 0 && !hasEligibleCover) {
     marketplaceIssues.push(
       issue(
         "HORIZONTAL_COVER_REQUIRED",
-        "Adicione pelo menos uma foto horizontal com resolução adequada para a capa.",
+        inspections.some((inspection) => !inspection.valid)
+          ? `${MARKETPLACE_COVER_REQUIREMENT} Não foi possível confirmar uma capa: confira também as fotos que não puderam ser lidas.`
+          : `${MARKETPLACE_COVER_REQUIREMENT} Nenhuma das fotos enviadas atende a esse requisito. Adicione uma foto horizontal ou quadrada original; as fotos verticais podem continuar na galeria.`,
         "images",
       ),
     )
   }
 
-  const marketplace = { ready: marketplaceIssues.length === 0, issues: marketplaceIssues }
+  const marketplace = { ready: marketplaceIssues.length === 0, issues: marketplaceIssues, photos }
   return {
     schemaVersion: 1,
     catalogReady: catalog.ready,

@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
-import Image from "next/image"
+import { PropertyPhotoPreview } from "@/components/property-photo-preview"
+import { MARKETPLACE_COVER_REQUIREMENT } from "@/lib/property-image-requirements"
 import { Bath, BedDouble, BookOpenCheck, CarFront, CircleAlert, FileText, Filter, ImagePlus, KeyRound, MapPin, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -707,12 +708,13 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                           Adicionar fotos
                         </label>
                       </div>
+                      <p className="text-sm leading-6 text-[#667085]">{MARKETPLACE_COVER_REQUIREMENT} As fotos abaixo são exibidas inteiras, sem recorte. Use “Usar capa” para colocar sua escolha em primeiro lugar.</p>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {editingProperty.images.map((image, index) => (
                           <div key={`${image}-${index}`} className="group relative w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
-                            <div className="relative w-full overflow-hidden aspect-[4/3] sm:max-h-36">
+                            <div className="relative w-full">
                               {getPropertyImage(image, `${editingProperty.id}-${index}`) ? (
-                                <Image src={getPropertyImage(image, `${editingProperty.id}-${index}`)} alt={`Imagem ${index + 1}`} fill sizes="(max-width: 640px) 100vw, (max-width: 1280px) 50vw, 25vw" className="h-full w-full object-cover" />
+                                <PropertyPhotoPreview src={image} index={index} />
                               ) : (
                                 <div className="flex h-full w-full items-center justify-center">
                                   <ImagePlus className="size-7 text-[#8B95A1]" />
@@ -723,7 +725,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                               <X className="size-4" />
                               <span className="sr-only">Remover foto</span>
                             </button>
-                            <button type="button" onClick={() => void makeCover(index)} className="absolute bottom-2 left-2 rounded-full bg-white/90 px-3 py-1 text-xs text-[#344054] opacity-100 shadow-sm transition-opacity hover:bg-white sm:opacity-0 sm:group-hover:opacity-100 sm:focus-visible:opacity-100">
+                            <button type="button" onClick={() => void makeCover(index)} aria-label={index === 0 ? "Foto 1: capa atual" : `Usar foto ${index + 1} como capa`} className="absolute bottom-2 left-2 rounded-full bg-white/90 px-3 py-1 text-xs text-[#344054] shadow-sm hover:bg-white">
                               {index === 0 ? "Capa" : "Usar capa"}
                             </button>
                           </div>
@@ -948,6 +950,25 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                       </li>
                     ))}
                   </ul>
+                  {publicationBlock.error.channelReadiness.photos?.length ? (
+                    <section className="mt-5" aria-label="Conferência das fotos">
+                      <h3 className="mb-3 text-sm font-semibold">Fotos conferidas no arquivo original</h3>
+                      <ol className="grid gap-3">
+                        {publicationBlock.error.channelReadiness.photos.map((photo) => (
+                          <li key={photo.index} className="flex min-w-0 items-start gap-3 text-xs leading-5 text-[#475467]">
+                            {getPropertyImage(publicationBlock.property.images[photo.index]) ? (
+                              // eslint-disable-next-line @next/next/no-img-element
+                              <img src={publicationBlock.property.images[photo.index]} alt={`Foto ${photo.index + 1}`} loading="lazy" className="h-20 w-20 shrink-0 rounded-lg bg-[#f3f5f2] object-contain" />
+                            ) : null}
+                            <div className="min-w-0">
+                              <p className="font-semibold">Foto {photo.index + 1}{photo.index === 0 ? " · capa atual" : ""}</p>
+                              <p>{photo.message}</p>
+                            </div>
+                          </li>
+                        ))}
+                      </ol>
+                    </section>
+                  ) : null}
                 </div>
 
                 <DialogFooter className="border-t border-black/[0.06] px-5 py-4 sm:justify-between">
