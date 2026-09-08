@@ -7,7 +7,7 @@
     position: absolute;
     z-index: 65;
     left: max(20px, env(safe-area-inset-left));
-    top: calc(env(safe-area-inset-top) + 210px);
+    top: calc(env(safe-area-inset-top) + 170px);
     width: calc(100% - 40px);
     max-width: 380px;
   }
@@ -42,13 +42,43 @@
   }
 
   .orbitArea {
-    top: calc(env(safe-area-inset-top) + 320px);
+    top: calc(env(safe-area-inset-top) + 280px);
     bottom: calc(env(safe-area-inset-bottom) + 144px);
   }
 
   .mobileLanding [data-module-card="mobile"] h3 {
     font-size: 14.5px;
     margin-top: 12px;
+  }
+
+  .mobileLanding .platformLogo::before {
+    left: 1%;
+    bottom: -7%;
+    width: 102%;
+    height: 18%;
+    background: radial-gradient(ellipse at center, rgb(28 50 37 / 18%), rgb(28 50 37 / 6%) 42%, transparent 72%);
+    transform: skewX(-12deg);
+  }
+
+  .mobileLanding .platformLogo::after {
+    bottom: -1%;
+    height: 5%;
+    background:
+      radial-gradient(ellipse 22% 50% at 16% 50%, rgb(24 42 31 / 36%), transparent),
+      radial-gradient(ellipse 27% 50% at 51% 50%, rgb(24 42 31 / 30%), transparent),
+      radial-gradient(ellipse 20% 50% at 85% 50%, rgb(24 42 31 / 34%), transparent);
+  }
+
+  .orbitTrail {
+    position: absolute;
+    z-index: 10;
+    top: 0;
+    left: 50%;
+    width: var(--mobile-orbit-width, 320px);
+    max-width: none;
+    height: auto;
+    transform: translate(-50%, -14%);
+    pointer-events: none;
   }
 
   .mobileLanding .acceleratorTeaser:global(.eme-accelerator-teaser.is-compact) {
@@ -98,6 +128,10 @@
 }
 
 @media (max-width: 1023px) and (max-height: 700px) {
-  .activity { top: calc(env(safe-area-inset-top) + 188px); }
-  .orbitArea { top: calc(env(safe-area-inset-top) + 294px); }
+  .activity { top: calc(env(safe-area-inset-top) + 156px); }
+  .orbitArea { top: calc(env(safe-area-inset-top) + 260px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .trailHighlight { display: none; }
 }

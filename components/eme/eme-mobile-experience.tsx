@@ -217,7 +217,7 @@ export function EmeMobileExperience({
           onEntrar={() => openAuth("login")}
           onComecar={() => openAuth("signup")}
         />
-        <LandingProductIntro />
+        <LandingProductIntro showSupport={false} />
 
         <div data-mobile-landing-activity className={landingMobileStyles.activity}>
           <LandingActivity compact showWhenEmpty authOpen={sceneBlocking} />

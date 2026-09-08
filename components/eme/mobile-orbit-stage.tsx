@@ -7,15 +7,16 @@ import { ModuleCard } from "@/components/eme/module-card"
 import { emeModules } from "@/lib/eme-modules"
 import { orbitBrightness, orbitOpacity } from "@/lib/eme-orbit-presentation"
 import heroMaterial from "./hero-material.module.css"
+import mobileStyles from "./landing-mobile-refinement.module.css"
 
 const MOBILE_ORBIT = {
-  radiusX: 160,
-  verticalLift: 136,
-  backLift: 110,
-  tilt: 4,
-  sideScale: 0.52,
-  backScale: 0.68,
-  frontScale: 0.86,
+  radiusX: 164,
+  verticalLift: 138,
+  backLift: 124,
+  tilt: 6,
+  sideScale: 0.6,
+  backScale: 0.7,
+  frontScale: 0.92,
 } as const
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value))
@@ -50,6 +51,7 @@ export function MobileOrbitStage({
   const cardRefs = useRef<Array<HTMLDivElement | null>>([])
   const lastActiveIndexRef = useRef(-1)
   const stageRef = useRef<HTMLDivElement>(null)
+  const trailRef = useRef<SVGEllipseElement>(null)
   const geometryRef = useRef({ radiusX: 148, heightScale: 1 })
 
   const placeCards = useCallback(
@@ -57,6 +59,7 @@ export function MobileOrbitStage({
       let activeIndex = 0
       let activeDepth = -Infinity
       const { radiusX, heightScale } = geometryRef.current
+      if (trailRef.current) trailRef.current.style.strokeDashoffset = String(-angle)
 
       emeModules.forEach((module, index) => {
         const element = cardRefs.current[index]
@@ -83,7 +86,7 @@ export function MobileOrbitStage({
               : baseOpacity * 0.24
             : baseOpacity
 
-        element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, 0) rotateY(${round(-lateral * 7)}deg) scale(${round(scale, 4)})`
+        element.style.transform = `translate(-50%, -50%) translate3d(${round(x)}px, ${round(y)}px, 0) rotateY(${round(-lateral * 10)}deg) scale(${round(scale, 4)})`
         element.style.opacity = round(opacity, 4).toString()
         element.style.filter = `brightness(${round(orbitBrightness(rawDepth), 4)}) saturate(${round(0.82 + rawDepth * 0.18, 4)})`
         element.style.zIndex = Math.round(front * 1000).toString()
@@ -110,8 +113,11 @@ export function MobileOrbitStage({
     const stage = stageRef.current
     if (!stage) return
     const heightScale = clamp(stage.clientHeight / 370, 0.5, 1)
-    geometryRef.current = { radiusX: Math.min(MOBILE_ORBIT.radiusX, stage.clientWidth / 2 - 54) * heightScale, heightScale }
+    const radiusX = Math.min(MOBILE_ORBIT.radiusX, stage.clientWidth / 2 - 46) * heightScale
+    geometryRef.current = { radiusX, heightScale }
     stage.style.setProperty("--mobile-logo-width", `${Math.min(200, stage.clientWidth * 0.48) * heightScale}px`)
+    stage.style.setProperty("--mobile-scene-lift", `${-8 * heightScale}px`)
+    stage.style.setProperty("--mobile-orbit-width", `${radiusX * 2 + 24 * heightScale}px`)
     placeCards(orbitAngle.get())
   }, [orbitAngle, placeCards])
 
@@ -133,12 +139,16 @@ export function MobileOrbitStage({
       data-mobile-orbit-stage
       className="relative flex h-full w-full items-center justify-center"
     >
-      <div className="relative" style={{ transformStyle: "preserve-3d" }}>
-        <div
+      <div className="relative" style={{ transformStyle: "preserve-3d", transform: "translateY(var(--mobile-scene-lift, -8px))" }}>
+        <svg
           aria-hidden
-          className="pointer-events-none absolute left-1/2 top-1/2 h-[128px] w-[356px] max-w-[94vw] -translate-x-1/2 rounded-[100%] border border-eme/10"
-          style={{ transform: "translate(-50%, 22%) rotateX(80deg)", zIndex: 10 }}
-        />
+          focusable="false"
+          viewBox="0 0 400 160"
+          className={mobileStyles.orbitTrail}
+        >
+          <ellipse cx="200" cy="80" rx="190" ry="64" fill="none" stroke="#459d70" strokeWidth="1" opacity=".24" />
+          <ellipse ref={trailRef} className={mobileStyles.trailHighlight} cx="200" cy="80" rx="190" ry="64" pathLength="360" fill="none" stroke="#64c68e" strokeWidth="1.6" strokeLinecap="round" strokeDasharray="46 314" opacity=".6" />
+        </svg>
 
         <div
           className="pointer-events-none absolute left-1/2 top-1/2"
@@ -148,7 +158,7 @@ export function MobileOrbitStage({
             transformStyle: "preserve-3d",
           }}
         >
-          <div data-mobile-orbit-logo className={`${heroMaterial.logo} relative aspect-[5/2]`} style={{ width: "var(--mobile-logo-width, 180px)" }}>
+          <div data-mobile-orbit-logo className={`${heroMaterial.logo} ${mobileStyles.platformLogo} relative aspect-[5/2]`} style={{ width: "var(--mobile-logo-width, 180px)" }}>
             <img
               src="/images/eme-logo-3d-premium.webp"
               alt="EME"
