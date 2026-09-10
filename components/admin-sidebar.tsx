@@ -41,6 +41,7 @@ import {
 
 const menuItems = [
   { label: "Dashboard", icon: LayoutDashboard, href: "/admin" },
+  { label: "Tráfego", icon: BarChart3, href: "/admin/trafego" },
   { label: "Marketplace", icon: Store, href: "/admin/marketplace" },
   { label: "Catálogos", icon: BookOpen, href: "/admin/catalogos" },
   { label: "Usuários", icon: Users, href: "/admin/usuarios" },

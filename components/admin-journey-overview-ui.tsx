@@ -31,7 +31,7 @@ export function OverviewRanking({ rows, unavailable, labels = {}, unit = "evento
     <div className="h-1 overflow-hidden rounded-full bg-[#eef2ee]" aria-hidden="true"><div className="h-full rounded-full bg-[#6c9a7d]" style={{ width: `${row.count / max * 100}%` }} /></div>
   </li>)}</ul>
 }
-export function OverviewTrafficChart({ data, hourly, metric }: { data: JourneyOverviewData; hourly: boolean; metric: "views" | "visitors" | "sessions" }) {
+export function OverviewTrafficChart({ data, hourly, metric }: { data: Pick<JourneyOverviewData, "series"> & { quality: Pick<JourneyOverviewData["quality"], "firstReceivedAt"> }; hourly: boolean; metric: "views" | "visitors" | "sessions" }) {
   const points = data.series
   if (!points.length) return <OverviewEmpty />
   const maximum = Math.max(...points.map(point => point[metric]), 1)
