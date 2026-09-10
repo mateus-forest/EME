@@ -57,11 +57,11 @@ test.describe("padrão de publicação de imóveis", () => {
     expect(readiness.marketplace.photos).toHaveLength(5)
     expect(readiness.marketplace.photos?.[0].message).toContain("1600 × 1600 px · quadrada")
     expect(readiness.marketplace.photos?.[1].message).toContain("1200 × 1600 px · vertical")
-    expect(readiness.marketplace.photos?.map((photo) => photo.coverEligible)).toEqual([true, false, false, false, false])
+    expect(readiness.marketplace.photos?.map((photo) => photo.coverEligible)).toEqual([true, true, true, true, true])
     expect(readiness.marketplace.photos?.[0].message).toContain("Apta para capa")
   })
 
-  for (const [width, height, eligible] of [[1600,1600,true], [1200,1200,true], [1600,900,true], [1200,675,true], [900,1200,false], [800,800,false]] as const) {
+  for (const [width, height, eligible] of [[1600,1600,true], [1200,1200,true], [1600,900,true], [1200,675,true], [900,1200,true], [800,800,true], [1050,1050,true]] as const) {
     test(`regra global de capa: ${width}×${height} → ${eligible}`, async () => {
       const details = describePropertyImage(width, height)
       expect(details.coverEligible).toBe(eligible)
@@ -70,12 +70,12 @@ test.describe("padrão de publicação de imóveis", () => {
       })
       expect(readiness.marketplaceReady).toBe(eligible)
       expect(issueCodes(readiness).includes("HORIZONTAL_COVER_REQUIRED")).toBe(!eligible)
-      expect(issueCodes(readiness).includes("PHOTO_RESOLUTION_TOO_LOW")).toBe(width === 800)
+      expect(issueCodes(readiness).includes("PHOTO_RESOLUTION_TOO_LOW")).toBe(false)
     })
   }
 
   test("mensagem de capa informa a nova regra sem alterar os limites da galeria", () => {
-    expect(MARKETPLACE_COVER_REQUIREMENT).toBe("Para a capa, use uma foto horizontal ou quadrada com no mínimo 1200×675 px.")
+    expect(MARKETPLACE_COVER_REQUIREMENT).toBe("A capa pode ser horizontal, quadrada ou vertical. O enquadramento no Marketplace é apenas visual e preserva o arquivo original.")
   })
 
   test("uma única horizontal válida basta, mesmo fora da primeira posição", async () => {
@@ -83,17 +83,17 @@ test.describe("padrão de publicação de imóveis", () => {
       inspectImage: async (url) => ({ valid: true, format: "jpeg", width: 1200, height: url === imageUrls[3] ? 675 : 1600 }),
     })
     expect(readiness.marketplaceReady).toBe(true)
-    expect(readiness.marketplace.photos?.map((photo) => photo.coverEligible)).toEqual([false, false, false, true])
+    expect(readiness.marketplace.photos?.map((photo) => photo.coverEligible)).toEqual([true, true, true, true])
   })
 
-  test("foto pequena informa dimensão real sem relaxar o mínimo", async () => {
+  test("foto pequena informa dimensão real e recomenda qualidade sem bloquear", async () => {
     const readiness = await assessPropertyPublicationReadiness(completeProperty, {
       inspectImage: async () => ({ valid: true, format: "jpeg", width: 1199, height: 674 }),
     })
-    expect(issueCodes(readiness).filter((code) => code === "PHOTO_RESOLUTION_TOO_LOW")).toHaveLength(4)
-    expect(readiness.marketplace.issues[0].message).toContain("1199 × 674 px")
-    expect(readiness.marketplace.issues[0].message).toContain("lado maior de pelo menos 1200 px")
-    expect(readiness.marketplaceReady).toBe(false)
+    expect(issueCodes(readiness)).toEqual([])
+    expect(readiness.marketplace.photos?.[0].message).toContain("1199 × 674 px")
+    expect(readiness.marketplace.recommendations).toHaveLength(1)
+    expect(readiness.marketplaceReady).toBe(true)
   })
 
   test("falha de leitura não é apresentada como prova de foto vertical ou pequena", async () => {
@@ -101,9 +101,23 @@ test.describe("padrão de publicação de imóveis", () => {
       inspectImage: async () => ({ valid: false, reason: "unreachable" }),
     })
     expect(readiness.marketplace.issues[0].message).toContain("não pôde ser carregada")
-    expect(readiness.marketplace.issues.find((item) => item.code === "HORIZONTAL_COVER_REQUIRED")?.message).toContain("Não foi possível confirmar")
+    expect(issueCodes(readiness)).not.toContain("HORIZONTAL_COVER_REQUIRED")
     expect(readiness.marketplace.photos?.every((photo) => photo.width === undefined)).toBe(true)
   })
+
+  for (const [width, height] of [[1050, 1050], [600, 900], [900, 600]]) {
+    for (const count of [1, 2, 3]) {
+      test(`publica ${count} foto(s) ${width}×${height} com aviso não bloqueante`, async () => {
+        const readiness = await assessPropertyPublicationReadiness({ ...completeProperty, imageUrls: imageUrls.slice(0, count) }, {
+          inspectImage: async () => ({ valid: true, format: "jpeg", width, height }),
+        })
+        expect(readiness.marketplaceReady).toBe(true)
+        expect(readiness.marketplace.issues).toEqual([])
+        expect(readiness.marketplace.photos?.every((photo) => photo.coverEligible)).toBe(true)
+        expect(readiness.marketplace.recommendations).toHaveLength(1)
+      })
+    }
+  }
 
   test("inspeção lê bytes originais e respeita orientação EXIF antes de validar capa", async () => {
     const horizontal = await sharp({ create: { width: 1200, height: 675, channels: 3, background: "#ddd" } }).jpeg().toBuffer()
@@ -155,7 +169,7 @@ test.describe("padrão de publicação de imóveis", () => {
     ]))
   })
 
-  test("bloqueia imóvel sem fotos ou com poucas fotos", async () => {
+  test("bloqueia imóvel sem fotos e permite poucas fotos", async () => {
     const withoutPhotos = await assessPropertyPublicationReadiness({ ...completeProperty, imageUrls: [] })
     const withFewPhotos = await assessPropertyPublicationReadiness(
       { ...completeProperty, imageUrls: imageUrls.slice(0, 3) },
@@ -163,10 +177,10 @@ test.describe("padrão de publicação de imóveis", () => {
     )
 
     expect(issueCodes(withoutPhotos)).toContain("MINIMUM_PHOTOS_REQUIRED")
-    expect(issueCodes(withFewPhotos)).toContain("MINIMUM_PHOTOS_REQUIRED")
+    expect(withFewPhotos.marketplaceReady).toBe(true)
   })
 
-  test("bloqueia foto principal inválida, formato não suportado e baixa resolução", async () => {
+  test("bloqueia foto principal inválida e formato não suportado, mas permite baixa resolução", async () => {
     const inspections: PropertyImageInspection[] = [
       { valid: false, reason: "invalid_url" },
       { valid: false, reason: "unsupported_format", format: "gif" },
@@ -181,12 +195,10 @@ test.describe("padrão de publicação de imóveis", () => {
     expect(issueCodes(readiness)).toEqual(expect.arrayContaining([
       "PRIMARY_PHOTO_INVALID",
       "PHOTO_FORMAT_UNSUPPORTED",
-      "PHOTO_RESOLUTION_TOO_LOW",
-      "MINIMUM_PHOTOS_REQUIRED",
     ]))
   })
 
-  test("rejeita galeria só de verticais e aceita capa horizontal sem impor proporção exata", async () => {
+  test("aceita galeria só de verticais e capa horizontal sem impor proporção exata", async () => {
     const portrait = { valid: true, format: "webp", width: 900, height: 1600 } satisfies PropertyImageInspection
     const withoutCover = await assessPropertyPublicationReadiness(completeProperty, {
       inspectImage: async () => portrait,
@@ -197,7 +209,7 @@ test.describe("padrão de publicação de imóveis", () => {
         : portrait,
     })
 
-    expect(issueCodes(withoutCover)).toContain("HORIZONTAL_COVER_REQUIRED")
+    expect(withoutCover.marketplaceReady).toBe(true)
     expect(mixedDimensions.marketplaceReady).toBe(true)
   })
 
@@ -266,7 +278,7 @@ test.describe("padrão de publicação de imóveis", () => {
       channelReadiness: { ready: false },
     })
     expect(response.channelReadiness.issues.map((item) => item.message)).toEqual(expect.arrayContaining([
-      "Adicione pelo menos 4 fotos.",
+      "Adicione pelo menos 1 foto válida.",
       "Seu CRECI precisa estar verificado.",
     ]))
   })

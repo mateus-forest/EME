@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 import { Check, Sparkles, Circle } from 'lucide-react'
 import { compatibilityLabel, type Compatibility } from '@/lib/marketplace/search-data'
 import { cn } from '@/lib/utils'

@@ -1,7 +1,7 @@
 import type { CreciValidationStatus, PropertyType } from "@/lib/prisma-enums"
 import { isPlaceholderPropertyImage } from "@/lib/property-media"
 import { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
-import { describePropertyImage, MARKETPLACE_COVER_REQUIREMENT } from "@/lib/property-image-requirements"
+import { describePropertyImage, MARKETPLACE_MEDIA_RECOMMENDATION } from "@/lib/property-image-requirements"
 
 export { PROPERTY_PUBLICATION_STANDARDS } from "@/lib/property-publication-standards"
 
@@ -37,6 +37,7 @@ export type PropertyPublicationIssue = {
 export type PropertyChannelReadiness = {
   ready: boolean
   issues: PropertyPublicationIssue[]
+  recommendations?: string[]
   photos?: PropertyPublicationPhoto[]
 }
 
@@ -377,7 +378,7 @@ export async function assessPropertyPublicationReadiness(
     marketplaceIssues.push(
       issue(
         "MINIMUM_PHOTOS_REQUIRED",
-        `Adicione pelo menos ${PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos} fotos.`,
+        "Adicione pelo menos 1 foto válida.",
         "images",
       ),
     )
@@ -391,7 +392,6 @@ export async function assessPropertyPublicationReadiness(
     const details = describePropertyImage(width, height)
     return { index, width, height, coverEligible: details.coverEligible, message: `${details.dimensions}. ${details.status}` }
   })
-  let hasEligibleCover = false
   let validImageCount = 0
 
   inspections.forEach((inspection, index) => {
@@ -409,46 +409,22 @@ export async function assessPropertyPublicationReadiness(
     }
 
     validImageCount += 1
-    const width = inspection.width ?? 0
-    const height = inspection.height ?? 0
-    const { hasMinimumResolution, coverEligible, dimensions, status } = describePropertyImage(width, height)
-
-    if (!hasMinimumResolution) {
-      marketplaceIssues.push(
-        issue(
-          "PHOTO_RESOLUTION_TOO_LOW",
-          `A foto ${index + 1} possui ${dimensions}. ${status}`,
-          `images.${index}`,
-        ),
-      )
-      return
-    }
-
-    if (coverEligible) hasEligibleCover = true
   })
 
   if (images.length >= PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos && validImageCount < PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos) {
     marketplaceIssues.push(
       issue(
         "MINIMUM_PHOTOS_REQUIRED",
-        `Mantenha pelo menos ${PROPERTY_PUBLICATION_STANDARDS.marketplace.minimumPhotos} fotos válidas.`,
+        "Mantenha pelo menos 1 foto válida.",
         "images",
       ),
     )
   }
-  if (images.length > 0 && !hasEligibleCover) {
-    marketplaceIssues.push(
-      issue(
-        "HORIZONTAL_COVER_REQUIRED",
-        inspections.some((inspection) => !inspection.valid)
-          ? `${MARKETPLACE_COVER_REQUIREMENT} Não foi possível confirmar uma capa: confira também as fotos que não puderam ser lidas.`
-          : `${MARKETPLACE_COVER_REQUIREMENT} Nenhuma das fotos enviadas atende a esse requisito. Adicione uma foto horizontal ou quadrada original; as fotos verticais podem continuar na galeria.`,
-        "images",
-      ),
-    )
-  }
-
-  const marketplace = { ready: marketplaceIssues.length === 0, issues: marketplaceIssues, photos }
+  const recommendations = images.length > 0 && (
+    images.length < PROPERTY_PUBLICATION_STANDARDS.marketplace.recommendedPhotos ||
+    inspections.some((photo) => photo.valid && !describePropertyImage(photo.width ?? 0, photo.height ?? 0).hasRecommendedResolution)
+  ) ? [MARKETPLACE_MEDIA_RECOMMENDATION] : []
+  const marketplace = { ready: marketplaceIssues.length === 0, issues: marketplaceIssues, photos, recommendations }
   return {
     schemaVersion: 1,
     catalogReady: catalog.ready,

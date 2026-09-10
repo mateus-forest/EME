@@ -1,3 +1,4 @@
+/** @jsxImportSource react */
 'use client'
 
 import { useId, useState } from 'react'
@@ -107,7 +108,7 @@ export function PropertyCard({
         className={cn(
           'relative shrink-0 overflow-hidden',
           featured
-            ? 'aspect-[4/3] lg:aspect-auto lg:min-h-[360px] lg:flex-1'
+            ? 'aspect-[4/3] lg:min-h-[360px] lg:flex-1'
             : home
               ? 'aspect-[16/7]'
             : compact
@@ -125,7 +126,7 @@ export function PropertyCard({
             alt={property.title}
             fill
             sizes={featured ? '(max-width: 1024px) 100vw, 66vw' : '(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 560px'}
-            className="object-cover transition-transform duration-700 ease-out group-hover:scale-[1.035]"
+            className="object-cover object-center transition-transform duration-700 ease-out group-hover:scale-[1.035]"
           />
         </Link>
 

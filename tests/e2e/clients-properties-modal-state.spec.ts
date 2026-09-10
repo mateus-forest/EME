@@ -173,7 +173,7 @@ async function mockBrokerSession(page: Page) {
 
 test.describe("estado dos modais de clientes e imóveis", () => {
   for (const width of [1440, 390]) {
-    test(`fotos de publicação: dimensões, capa e nova tentativa em ${width}px`, async ({ page }, testInfo) => {
+    test(`fotos de publicação: uma foto vertical e edição da capa em ${width}px`, async ({ page }, testInfo) => {
       test.setTimeout(90_000)
       await page.setViewportSize({ width, height: 900 })
       // Every API is intercepted: this regression test must never write to real accounts.
@@ -184,7 +184,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
       const portrait = await sharp({ create: { width: 1200, height: 1600, channels: 3, background: "#b3c8b3" } }).jpeg().toBuffer()
       const landscape = await sharp({ create: { width: 1200, height: 675, channels: 3, background: "#b8c9b4" } }).jpeg().toBuffer()
       const urls = ["/qa-photo-0.jpg", "/qa-photo-1.jpg", "/qa-photo-2.jpg", "/qa-photo-3.jpg"]
-      let current = { ...property, images: urls, marketplacePublished: false }
+      let current = { ...property, images: urls.slice(0, 1), marketplacePublished: false }
       await page.route("**/qa-photo-*.jpg", (route) => route.fulfill({ contentType: "image/jpeg", body: route.request().url().includes("square") ? square : route.request().url().includes("landscape") ? landscape : portrait }))
       await page.route("**/api/properties/me**", (route) => route.fulfill({ json: { properties: [current] } }))
       await page.route(`**/api/properties/${property.id}`, async (route) => {
@@ -215,30 +215,19 @@ test.describe("estado dos modais de clientes e imóveis", () => {
       })
       await page.goto("/corretor/imoveis", { waitUntil: "domcontentloaded" })
       const actions = page.getByRole("button", { name: `Mais ações para ${property.title}` })
-      await actions.click()
-      await page.getByRole("menuitem", { name: "Publicar no Marketplace" }).click()
-      await expect.poll(() => responses).toEqual([422])
-      const dialog = page.getByRole("dialog")
-      await expect(dialog.getByText(/Para a capa, use uma foto horizontal ou quadrada/)).toBeVisible()
-      await expect(dialog.getByText(/1200 × 1600 px · vertical/)).toHaveCount(4)
-      await dialog.getByText("Foto 4", { exact: true }).scrollIntoViewIfNeeded()
-      await expect(dialog.getByText("Foto 4", { exact: true })).toBeInViewport()
-      await dialog.getByTestId("publication-readiness-issues").scrollIntoViewIfNeeded()
-      expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
-      await page.screenshot({ path: testInfo.outputPath(`publication-issues-${width}.png`), animations: "disabled" })
-      await dialog.getByRole("button", { name: "Corrigir imóvel" }).click()
-      await expect(page.getByTestId("property-photo-1")).toContainText("1200 × 1600 px · vertical")
-      await expect(page.getByTestId("property-photo-2")).toContainText("1200 × 1600 px · vertical")
-      await expect(page.getByTestId("property-photo-1").getByRole("img")).toHaveCSS("object-fit", "contain")
-      await dialog.locator('input[type="file"][accept="image/jpeg,image/png,image/webp"]').setInputFiles({ name: "square.jpg", mimeType: "image/jpeg", buffer: square })
-      await expect(page.getByTestId("property-photo-5")).toContainText("Apta para capa do Marketplace.")
-      await dialog.getByRole("button", { name: "Usar foto 5 como capa" }).click()
-      await expect(page.getByTestId("property-photo-1")).toContainText("1600 × 1600 px · quadrada")
-      await dialog.getByRole("button", { name: "Salvar alterações" }).click()
-      await actions.click()
-      await page.getByRole("menuitem", { name: "Publicar no Marketplace" }).click()
+      await page.getByRole("button", { name: "Publicar mesmo assim", exact: true }).click()
+      await expect.poll(() => responses).toEqual([200])
       await expect.poll(() => current.marketplacePublished).toBe(true)
-      expect(responses).toEqual([422, 200])
+      await actions.click()
+      await page.getByRole("menuitem", { name: "Editar imóvel" }).click()
+      const dialog = page.getByRole("dialog")
+      await expect(dialog.getByText(/A capa pode ser horizontal, quadrada ou vertical/)).toBeVisible()
+      await expect(page.getByTestId("property-photo-1")).toContainText("1200 × 1600 px · vertical")
+      await expect(page.getByTestId("property-photo-1").getByRole("img")).toHaveCSS("object-fit", "contain")
+      expect(await dialog.evaluate((element) => element.scrollWidth <= element.clientWidth)).toBe(true)
+      await page.screenshot({ path: testInfo.outputPath(`publication-photos-${width}.png`), animations: "disabled" })
+      await dialog.getByRole("button", { name: "Salvar alterações" }).click()
+      expect(responses).toEqual([200])
     })
   }
 
@@ -497,7 +486,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
         channelReadiness: {
           ready: false,
           issues: [
-            { code: "MINIMUM_PHOTOS_REQUIRED", message: "Adicione pelo menos 4 fotos.", field: "images", scope: "property" },
+            { code: "MINIMUM_PHOTOS_REQUIRED", message: "Adicione pelo menos 1 foto válida.", field: "images", scope: "property" },
             { code: "CRECI_NOT_VERIFIED", message: "Seu CRECI precisa estar verificado.", field: "creciValidationStatus", scope: "broker" },
           ],
         },
@@ -510,7 +499,7 @@ test.describe("estado dos modais de clientes e imóveis", () => {
 
     const dialog = page.getByRole("dialog")
     await expect(dialog.getByRole("heading", { name: "Este imóvel ainda não atende ao padrão de publicação do EME." })).toBeVisible()
-    await expect(dialog.getByText("Adicione pelo menos 4 fotos.")).toBeVisible()
+    await expect(dialog.getByText("Adicione pelo menos 1 foto válida.")).toBeVisible()
     await expect(dialog.getByText("Seu CRECI precisa estar verificado.")).toBeVisible()
     await expect(dialog.getByRole("link", { name: "Verificar CRECI" })).toHaveAttribute("href", "/corretor/conta")
     await expect(dialog.getByRole("button", { name: "Corrigir imóvel" })).toBeVisible()
@@ -546,6 +535,6 @@ test.describe("estado dos modais de clientes e imóveis", () => {
     await expect(dialog.getByText("Seu CRECI precisa estar verificado.")).toBeVisible()
     await expect(dialog.getByRole("link", { name: "Verificar CRECI" })).toHaveAttribute("href", "/corretor/conta")
     await expect(dialog.getByTestId("publication-readiness-issues").getByRole("listitem")).toHaveCount(1)
-    await expect(dialog).not.toContainText("Adicione pelo menos 4 fotos.")
+    await expect(dialog).not.toContainText("Adicione pelo menos 1 foto válida.")
   })
 })

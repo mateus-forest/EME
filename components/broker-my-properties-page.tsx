@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import { useParams, useRouter } from "next/navigation"
 import { PropertyPhotoPreview } from "@/components/property-photo-preview"
-import { MARKETPLACE_COVER_REQUIREMENT } from "@/lib/property-image-requirements"
+import { MARKETPLACE_COVER_REQUIREMENT, MARKETPLACE_MEDIA_RECOMMENDATION } from "@/lib/property-image-requirements"
 import { Bath, BedDouble, BookOpenCheck, CarFront, CircleAlert, FileText, Filter, ImagePlus, KeyRound, MapPin, Mic, MoreHorizontal, PencilLine, Plus, Store, Trash2, X } from "lucide-react"
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
 import { BrokerPageShell } from "@/components/broker-page-shell"
@@ -631,6 +631,14 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                   </div>
 
                   <div className="mt-auto flex min-w-0 flex-col gap-2.5 px-0.5 pb-0.5">
+                    {!property.marketplacePublished && property.images.length > 0 ? (
+                      <div className="text-xs leading-5 text-amber-800">
+                        <p role="status">{MARKETPLACE_MEDIA_RECOMMENDATION}</p>
+                        <button type="button" onClick={() => void toggleMarketplace(property)} className="mt-1 font-semibold underline underline-offset-2">
+                          Publicar mesmo assim
+                        </button>
+                      </div>
+                    ) : null}
                     <div className="grid grid-cols-2 gap-1.5">
                       <MetricCard label="Visualizações" value={property.views} />
                       <MetricCard label="Leads" value={property.leads} />
@@ -708,7 +716,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
                           Adicionar fotos
                         </label>
                       </div>
-                      <p className="text-sm leading-6 text-[#667085]">{MARKETPLACE_COVER_REQUIREMENT} As fotos abaixo são exibidas inteiras, sem recorte. Use “Usar capa” para colocar sua escolha em primeiro lugar.</p>
+                      <p className="text-sm leading-6 text-[#667085]">{MARKETPLACE_COVER_REQUIREMENT} {MARKETPLACE_MEDIA_RECOMMENDATION} As fotos abaixo são exibidas inteiras, sem recorte. Use “Usar capa” para colocar sua escolha em primeiro lugar.</p>
                       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
                         {editingProperty.images.map((image, index) => (
                           <div key={`${image}-${index}`} className="group relative w-full min-w-0 overflow-hidden rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8]">
