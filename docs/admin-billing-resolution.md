@@ -1,5 +1,10 @@
 # Resolução de assinatura do Admin — etapa 1
 
+> A etapa seguinte adiciona verificação Stripe sob demanda no detalhe do usuário,
+> documentada em [admin-stripe-readonly.md](./admin-stripe-readonly.md). A leitura
+> inicial da lista continua local. As limitações abaixo descrevem essa projeção
+> local, antes de clicar em Verificar Stripe.
+
 ## Escopo e segurança
 
 `resolveAccountBilling` em `lib/billing-resolution.ts` é uma função de domínio sem

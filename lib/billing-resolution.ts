@@ -9,10 +9,11 @@ export type BillingResolutionInput = {
   stripe?: {
     id: string; customerId: string; status: string; priceId: string | null
     startedAt: DateValue; trialStart: DateValue; trialEnd: DateValue
-    currentPeriodEnd: DateValue; cancelAtPeriodEnd: boolean; cancelAt: DateValue; canceledAt: DateValue
+    currentPeriodStart?: DateValue; currentPeriodEnd: DateValue; cancelAtPeriodEnd: boolean; cancelAt: DateValue; canceledAt: DateValue
     observedAt: DateValue; reconciledAt: DateValue
   }
   pricePlans?: Readonly<Record<string, "pro" | "scale">>
+  stripeCheck?: { status: "not_needed" | "verified" | "incomplete" | "unavailable"; checkedAt: string; issues: Array<{ code: string; message: string }> }
   now?: Date
 }
 
@@ -35,6 +36,9 @@ export type BillingResolution = {
   cancellation: { atPeriodEnd: boolean; scheduledAt: string | null; canceledAt: string | null }
   lastReconciledAt: string | null
   stripeObservedAt: string | null
+  lastCheckedAt: string | null
+  verificationStatus: "not_checked" | "not_needed" | "verified" | "incomplete" | "unavailable"
+  currentPeriod: { startedAt: string | null; endsAt: string | null }
   conflicts: Array<{ code: string; message: string }>
   limitations: string[]
 }
@@ -60,9 +64,12 @@ export function billingPlanLabel(plan: ResolvedPlan | null): string {
 
 export function resolveAccountBilling(input: BillingResolutionInput): BillingResolution {
   const { user, planAccount, subscription, stripe } = input
-  const conflicts: BillingResolution["conflicts"] = []
+  const conflicts: BillingResolution["conflicts"] = [...(input.stripeCheck?.issues ?? [])]
   const limitations: string[] = []
   const conflict = (code: string, message: string) => { conflicts.push({ code, message }) }
+  if (input.stripeCheck && ["incomplete", "unavailable"].includes(input.stripeCheck.status) && !conflicts.length) {
+    conflict("STRIPE_EVIDENCE_INCOMPLETE", "Verificação Stripe sem evidência suficiente.")
+  }
   const account = accountPlan(planAccount?.planKey)
   const legacy = legacyPlan(user.plan)
   const status = stripe?.status ?? subscription?.status ?? null
@@ -101,6 +108,10 @@ export function resolveAccountBilling(input: BillingResolutionInput): BillingRes
     contractedPlan = "free"
     source = planAccount ? "broker_plan_account" : "free_default"
   }
+  if (contractedPlan === "free" && input.stripeCheck && ["incomplete", "unavailable"].includes(input.stripeCheck.status)) {
+    contractedPlan = null
+    source = "unknown"
+  }
 
   // Describe the persisted access tier, including inconsistencies. Do not apply a new access policy.
   const effectivePlan = planAccount ? account : user.subscriptionStatus === "ACTIVE" ? legacy : "free"
@@ -126,6 +137,8 @@ export function resolveAccountBilling(input: BillingResolutionInput): BillingRes
       const expectedLocal = ["active", "trialing"].includes(stripe.status) ? "ACTIVE" : ["past_due", "unpaid", "incomplete"].includes(stripe.status) ? "PAST_DUE" : "CANCELED"
       if (subscription.status !== expectedLocal) conflict("STRIPE_STATUS_MISMATCH", "Lifecycle Stripe diverge do espelho interno.")
       if (subscription.cancelAtPeriodEnd !== stripe.cancelAtPeriodEnd) conflict("CANCELLATION_MISMATCH", "Cancelamento programado diverge entre Stripe e Subscription.")
+      if (iso(subscription.cancelAt) && iso(stripe.cancelAt) && iso(subscription.cancelAt) !== iso(stripe.cancelAt)) conflict("CANCELLATION_DATE_MISMATCH", "Data de cancelamento local diverge do Stripe.")
+      if (!canceled && !stripe.cancelAtPeriodEnd && !stripe.cancelAt && iso(subscription.nextBillingAt) && iso(stripe.currentPeriodEnd) && iso(subscription.nextBillingAt) !== iso(stripe.currentPeriodEnd)) conflict("RENEWAL_DATE_MISMATCH", "Próxima renovação local diverge do período do plano no Stripe.")
     }
   }
 
@@ -159,5 +172,8 @@ export function resolveAccountBilling(input: BillingResolutionInput): BillingRes
     renewalAt: canceled || atPeriodEnd || scheduledAt || trialKind === "local" ? null : iso(stripe ? stripe.currentPeriodEnd : subscription?.nextBillingAt),
     cancellation: { atPeriodEnd, scheduledAt, canceledAt: iso(stripe?.canceledAt) },
     lastReconciledAt: iso(stripe?.reconciledAt), stripeObservedAt: iso(stripe?.observedAt), conflicts, limitations,
+    lastCheckedAt: input.stripeCheck?.checkedAt ?? null,
+    verificationStatus: input.stripeCheck?.status ?? "not_checked",
+    currentPeriod: { startedAt: iso(stripe?.currentPeriodStart), endsAt: iso(stripe?.currentPeriodEnd) },
   }
 }

@@ -3,6 +3,8 @@
 import type { ReactNode } from "react"
 
 import type { AdminUserDetails } from "@/lib/admin-user-details-contract"
+import type { AdminStripeBillingReport } from "@/lib/admin-stripe-billing-contract"
+import { AdminStripeBillingCheck } from "@/components/admin-stripe-billing-check"
 
 function money(value: number) {
   return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value)
@@ -29,7 +31,7 @@ function Definition({ label, value, emphasized = false }: { label: string; value
   )
 }
 
-export function AdminUserDetailsPanel({ data, loading, error }: { data: AdminUserDetails | null; loading: boolean; error: string | null }) {
+export function AdminUserDetailsPanel({ data, loading, error, onBillingVerified }: { data: AdminUserDetails | null; loading: boolean; error: string | null; onBillingVerified?: (report: AdminStripeBillingReport) => void }) {
   if (loading) return <div className="rounded-2xl bg-slate-50 p-10 text-center text-sm text-slate-500">Carregando dados operacionais reais...</div>
   if (error) return <div className="rounded-2xl border border-red-200 bg-red-50 p-5 text-sm text-red-700">{error}</div>
   if (!data) return null
@@ -147,6 +149,7 @@ export function AdminUserDetailsPanel({ data, loading, error }: { data: AdminUse
       </Section>
 
       <Section title="Créditos, assinatura e cobranças" description={`Assinatura local: ${data.billing.localSubscriptionStatus ?? "sem assinatura"}.`}>
+        <AdminStripeBillingCheck key={data.user.id} userId={data.user.id} onVerified={onBillingVerified} />
         <div className="mb-4 grid gap-2.5 sm:grid-cols-2 lg:grid-cols-4">
           <Definition label="Plano" value={data.account.plan} />
           <Definition label="Status da assinatura" value={data.billing.subscriptionStatus} />

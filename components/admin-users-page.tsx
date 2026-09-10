@@ -21,6 +21,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { createWhatsAppUrl } from "@/lib/whatsapp"
 import type { AdminUserDetails } from "@/lib/admin-user-details-contract"
+import { billingPlanLabel } from "@/lib/billing-resolution"
 
 const typeFilters = ["Todos", "Corretor", "Operação", "Admin"] as const
 const statusFilters = ["Todos", "Ativo", "Inativo"] as const
@@ -238,7 +239,13 @@ export function AdminUsersPage() {
               </DialogHeader>
 
               <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto bg-[#fbfbf8] px-4 py-5 sm:px-6 lg:px-8">
-                <AdminUserDetailsPanel data={userDetails} loading={detailsLoading} error={detailsError} />
+                <AdminUserDetailsPanel data={userDetails} loading={detailsLoading} error={detailsError} onBillingVerified={(report) => {
+                  setUsers((current) => current.map((user) => user.id === report.userId ? { ...user, plan: billingPlanLabel(report.resolution.contractedPlan), billing: report.resolution } : user))
+                  setUserDetails((current) => current?.user.id === report.userId ? {
+                    ...current, account: { ...current.account, plan: billingPlanLabel(report.resolution.contractedPlan) },
+                    billing: { ...current.billing, resolution: report.resolution, subscriptionStatus: report.resolution.presentationStatus },
+                  } : current)
+                }} />
               </div>
 
               <DialogFooter className="shrink-0 flex-col items-stretch justify-between gap-3 border-t border-black/[0.06] bg-white px-6 py-4 sm:flex-row sm:items-center sm:justify-between lg:px-8">
