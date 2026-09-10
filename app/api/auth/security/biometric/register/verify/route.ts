@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { verifyRegistrationResponse } from "@simplewebauthn/server"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -14,7 +15,7 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -108,3 +109,5 @@ export async function POST(request: NextRequest) {
   clearWebAuthnActionCookie(response)
   return response
 }
+
+export const POST = withJourneyRoute("/api/auth/security/biometric/register/verify", handlePOST)

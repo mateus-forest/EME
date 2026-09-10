@@ -1,3 +1,4 @@
+import { emitJourney, getJourneyContext } from "@/lib/journey/server"
 import "server-only"
 import { normalizeCosActionResult } from "@/lib/cos/action-result"
 import { getCosCapabilityDescriptorById, getCosEntityModuleIdByCapabilityId } from "@/lib/cos/capability-catalog"
@@ -53,6 +54,7 @@ export async function executeCosLaunchAction(input: { kind: CosLaunchFormKind; b
   }
   const raw = await handler({ brokerId: input.brokerId, userId: input.userId, message: preparedMessage, action: descriptor.action, confirm: true, payload: preparedPayload, pendingInput: null, context: null })
   const result = normalizeCosActionResult({ result: raw, action: descriptor.action, entity })
+  if (result.status === "success" || result.status === "error") emitJourney(result.status === "success" ? "cos_action_completed" : "cos_action_failed", { dedupeKey: getJourneyContext()?.requestId, userId: input.userId, brokerId: input.brokerId, module: "cos", step: "action", outcome: result.status === "success" ? "completed" : "failed", errorCode: result.status === "success" ? null : "COS_ACTION_FAILED" })
   if (result.status !== "success") return { message: result.response, cards: [] as CosLaunchCard[], credits: { balance: balance.balance, usedThisMonth: balance.usedThisMonth } }
   if (cost > 0 && result.metadata.noCharge !== true) await consumeBrokerAiCredits({ brokerId: input.brokerId, amount: cost, actionType: descriptor.action, description: `COS Launch: ${descriptor.title}`, metadata: { source: "api/cos-launch", capabilityId } })
   const [card, credits] = await Promise.all([resultCard(input.kind, input.brokerId, result), getBrokerAiCreditBalance(input.brokerId)])

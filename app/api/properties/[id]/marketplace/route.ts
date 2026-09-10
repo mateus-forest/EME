@@ -1,3 +1,5 @@
+import { propertyPublishedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from 'next/server'
 import { UserRole } from '@/lib/prisma-enums'
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from '@/lib/auth-route'
@@ -23,7 +25,7 @@ function marketplaceSlug(title: string, publicCode: number | null, id: string) {
   return `${slugify(title).slice(0, 70)}-${suffix}`
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER, UserRole.AGENCY])
@@ -64,6 +66,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       },
       include: propertyInclude,
     })
+    propertyPublishedJourney(property, updated)
 
     await prisma.notification.create({
       data: {
@@ -89,3 +92,5 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: 'Não foi possível atualizar a publicação no Marketplace.' }, { status: 500 })
   }
 }
+
+export const PATCH = withJourneyRoute("/api/properties/[id]/marketplace", handlePATCH)

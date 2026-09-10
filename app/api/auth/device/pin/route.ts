@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { authUserSelect } from "@/lib/auth-route"
@@ -10,7 +11,7 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const trustedDevice = await resolveTrustedDevice(request)
 
   if (!trustedDevice) {
@@ -95,3 +96,5 @@ export async function POST(request: NextRequest) {
   setAuthCookie(response, token)
   return response
 }
+
+export const POST = withJourneyRoute("/api/auth/device/pin", handlePOST)

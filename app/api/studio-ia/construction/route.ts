@@ -1,3 +1,5 @@
+import { startStudioJourney, failStudioJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -60,7 +62,7 @@ function getExistingImages(property: { imageUrls: unknown }) {
     : []
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -96,6 +98,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "A imagem selecionada nao pertence a este imovel." }, { status: 400 })
     }
 
+    startStudioJourney()
     const result = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/construction",
@@ -158,6 +161,7 @@ export async function POST(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {
+    failStudioJourney()
     console.error("[api][studio-ia][construction] generation failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
@@ -182,3 +186,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/studio-ia/construction", handlePOST)

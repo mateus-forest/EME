@@ -1,3 +1,5 @@
+import { propertyCreatedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
@@ -27,7 +29,7 @@ const propertyInclude = {
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -118,6 +120,7 @@ export async function POST(request: NextRequest) {
       },
       include: propertyInclude,
     })
+    propertyCreatedJourney(property)
 
     await prisma.notification.create({
       data: {
@@ -190,3 +193,5 @@ function normalizeDocuments(value: unknown) {
     uploadedAt: cleanText(document.uploadedAt, 64) || new Date().toISOString(),
   }))
 }
+
+export const POST = withJourneyRoute("/api/properties", handlePOST)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -22,7 +23,7 @@ function isAccountType(value: unknown): value is (typeof FINANCIAL_ACCOUNT_TYPES
   return typeof value === "string" && FINANCIAL_ACCOUNT_TYPES.includes(value as (typeof FINANCIAL_ACCOUNT_TYPES)[number])
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -61,3 +62,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível cadastrar a conta." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/brokers/financial/accounts", handlePOST)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser } from "@/lib/auth-route"
@@ -6,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export async function DELETE(request: NextRequest) {
+async function handleDELETE(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -38,3 +39,5 @@ export async function DELETE(request: NextRequest) {
 
   return NextResponse.json({ success: true, biometricEnabled: false })
 }
+
+export const DELETE = withJourneyRoute("/api/auth/security/biometric", handleDELETE)

@@ -1,3 +1,5 @@
+import { studioJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { createHash } from "node:crypto"
 
 import type { Prisma } from "@prisma/client"
@@ -608,6 +610,7 @@ async function recordPreparationTelemetry(input: {
   externalCostUsd?: number | null
   externalRequestId?: string | null
 }) {
+  studioJourney(input.workflowId, input.status, { userId: input.user.id, brokerId: input.user.broker?.id, errorCode: input.errorCode, durationMs: input.durationMs })
   const operation = getPropertyPreparationOperation(input.configuration.operation)
   await recordAiOperationTelemetry({
     operationKey: `studio.property_preparation.${input.configuration.operation}`,
@@ -657,7 +660,7 @@ async function authenticate() {
   return { response: null, user }
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const authentication = await authenticate()
   if (!authentication.user) return authentication.response
 
@@ -671,7 +674,7 @@ export async function GET(request: NextRequest) {
   return campaignStateResponse(campaign, true)
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const startedAtMs = Date.now()
   const startedAt = new Date().toISOString()
   const authentication = await authenticate()
@@ -1003,3 +1006,6 @@ export async function POST(request: NextRequest) {
     return noStoreJson({ error: "Não foi possível preparar a imagem agora.", code: "UNEXPECTED_ERROR" }, 500)
   }
 }
+
+export const GET = withJourneyRoute("/api/studio-ia/prepare-property", handleGET)
+export const POST = withJourneyRoute("/api/studio-ia/prepare-property", handlePOST)

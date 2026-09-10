@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { compare } from "bcryptjs"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -7,7 +8,7 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
@@ -58,3 +59,5 @@ export async function POST(request: NextRequest) {
 
   return NextResponse.json({ success: true, pinConfigured: true })
 }
+
+export const POST = withJourneyRoute("/api/auth/security/pin", handlePOST)

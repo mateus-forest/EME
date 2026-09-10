@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -180,7 +181,7 @@ async function synchronizeStoredBindings(instance: NonNullable<Awaited<ReturnTyp
   return (await loadInstance(instance.id, instance.brokerId)) ?? instance
 }
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const { id } = await context.params
@@ -195,7 +196,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const brokerId = auth.user.broker!.id
@@ -297,7 +298,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const brokerId = auth.user.broker!.id
@@ -435,7 +436,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const brokerId = auth.user.broker!.id
@@ -462,3 +463,8 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     return NextResponse.json({ error: "Não foi possível excluir o contrato." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contract-instances/[id]", handleGET)
+export const PATCH = withJourneyRoute("/api/brokers/contract-instances/[id]", handlePATCH)
+export const POST = withJourneyRoute("/api/brokers/contract-instances/[id]", handlePOST)
+export const DELETE = withJourneyRoute("/api/brokers/contract-instances/[id]", handleDELETE)

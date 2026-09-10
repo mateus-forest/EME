@@ -1,3 +1,4 @@
+import { emitJourney, getJourneyContext } from "@/lib/journey/server"
 import "server-only"
 
 import { NextRequest, NextResponse } from "next/server"
@@ -354,6 +355,8 @@ async function finishTurn(input: {
       },
     }),
   ])
+  emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: input.userId, brokerId: input.brokerId, module: "cos", outcome: "completed" })
+  if (input.result?.status === "failed" || (input.result && input.actionStatus === "success" && input.result.executedSteps.length > 0)) emitJourney(input.result.status === "failed" ? "cos_action_failed" : "cos_action_completed", { dedupeKey: getJourneyContext()?.requestId, userId: input.userId, brokerId: input.brokerId, module: "cos", step: "action", outcome: input.result.status === "failed" ? "failed" : "completed", errorCode: input.result.status === "failed" ? "COS_ACTION_FAILED" : null })
   const credits = await brokerCredits(input.brokerId)
   return NextResponse.json({
     response: input.responseView.text,

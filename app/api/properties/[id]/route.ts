@@ -1,3 +1,5 @@
+import { propertyPublishedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import {
   type PropertyType,
   UserRole } from "@/lib/prisma-enums"
@@ -68,7 +70,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   return { error: null, property }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -156,6 +158,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       data,
       include: propertyInclude,
     })
+    propertyPublishedJourney(accessible.property, property)
 
     const response = NextResponse.json({ property: serializeProperty(property) })
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -220,7 +223,7 @@ function normalizeDocuments(value: unknown) {
   }))
 }
 
-export async function DELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -260,3 +263,6 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Erro interno ao excluir imóvel." }, { status: 500 })
   }
 }
+
+export const PATCH = withJourneyRoute("/api/properties/[id]", handlePATCH)
+export const DELETE = withJourneyRoute("/api/properties/[id]", handleDELETE)

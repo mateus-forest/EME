@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import path from "node:path"
 
 import { NextRequest, NextResponse } from "next/server"
@@ -21,7 +22,7 @@ import { UserRole } from "@/lib/prisma-enums"
 
 export const dynamic = "force-dynamic"
 
-export async function GET(
+async function handleGET(
   request: NextRequest,
   { params }: { params: Promise<unknown> },
 ) {
@@ -330,3 +331,5 @@ function resolveTextLeft(anchor: StudioTextRun["anchor"], x: number, width: numb
   if (anchor === "end") return x - width
   return x
 }
+
+export const GET = withJourneyRoute("/api/studio-ia/campaigns/[id]/assets/[assetId]/render", handleGET)

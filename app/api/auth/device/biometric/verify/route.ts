@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { verifyAuthenticationResponse } from "@simplewebauthn/server"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -17,7 +18,7 @@ import { buildSessionProfile } from "@/lib/session-profile"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const actionToken = request.cookies.get(WEBAUTHN_ACTION_COOKIE_NAME)?.value
 
   if (!actionToken) {
@@ -129,3 +130,5 @@ export async function POST(request: NextRequest) {
   clearWebAuthnActionCookie(response)
   return response
 }
+
+export const POST = withJourneyRoute("/api/auth/device/biometric/verify", handlePOST)

@@ -1,3 +1,4 @@
+import { documentCreatedJourney } from "@/lib/journey/business"
 import "server-only"
 
 import { buildProposalHtml } from "@/lib/proposal-template"
@@ -140,6 +141,7 @@ export const createProposalCapability: CosCapabilityHandler = async ({ brokerId,
       status: "draft",
     },
   })
+  documentCreatedJourney(document)
 
   await prisma.notification.create({
     data: {

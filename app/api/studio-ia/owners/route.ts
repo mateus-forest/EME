@@ -1,3 +1,5 @@
+import { startStudioJourney, failStudioJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 import { ZodError } from "zod"
@@ -12,7 +14,7 @@ import { generateOwnerStrategy, STUDIO_OWNER_ERRORS, studioOwnerRequestSchema } 
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -36,6 +38,7 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    startStudioJourney()
     const result = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/owners",
@@ -93,6 +96,7 @@ export async function POST(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {
+    failStudioJourney()
     console.error("[api][studio-ia][owners] generation failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
@@ -134,3 +138,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/studio-ia/owners", handlePOST)

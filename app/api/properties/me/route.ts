@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { NextResponse } from "next/server"
 
@@ -21,7 +22,7 @@ const propertyInclude = {
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -64,3 +65,5 @@ export async function GET() {
     return NextResponse.json({ error: "Erro interno ao listar imóveis." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/properties/me", handleGET)

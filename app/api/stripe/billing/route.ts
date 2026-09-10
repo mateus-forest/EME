@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import Stripe from "stripe"
 import { SubscriptionOwnerType, UserRole } from "@/lib/prisma-enums"
 import { NextResponse } from "next/server"
@@ -463,7 +464,7 @@ async function productName(stripe: Stripe, product: unknown, fallback: string, u
   }
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -655,3 +656,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withJourneyRoute("/api/stripe/billing", handleGET)

@@ -1,3 +1,5 @@
+import { propertyPublishedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import {
   type PropertyType,
   UserRole } from "@/lib/prisma-enums"
@@ -43,7 +45,7 @@ type PropertyUpdateData = {
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -179,6 +181,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       data,
       include: propertyInclude,
     })
+    propertyPublishedJourney(property, updatedProperty)
 
     const response = NextResponse.json({ property: serializeProperty(updatedProperty) })
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -199,7 +202,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function DELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -250,3 +253,6 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Erro interno ao excluir imóvel da imobiliária." }, { status: 500 })
   }
 }
+
+export const PATCH = withJourneyRoute("/api/properties/agency/[id]", handlePATCH)
+export const DELETE = withJourneyRoute("/api/properties/agency/[id]", handleDELETE)

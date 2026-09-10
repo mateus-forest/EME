@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -209,7 +210,7 @@ async function removeLeadLinkedContractDocument(input: { leadId: string | null; 
   })
 }
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -234,7 +235,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -683,7 +684,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -706,3 +707,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     return NextResponse.json({ error: "Não foi possível excluir o contrato." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contracts/[id]", handleGET)
+export const PATCH = withJourneyRoute("/api/brokers/contracts/[id]", handlePATCH)
+export const DELETE = withJourneyRoute("/api/brokers/contracts/[id]", handleDELETE)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -41,7 +42,7 @@ function serializePackage(pack: (typeof EME_EXTRA_PACKAGES)[keyof typeof EME_EXT
   }
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -236,3 +237,5 @@ export async function GET() {
     return NextResponse.json({ error: "Não foi possível carregar o plano." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/plan", handleGET)

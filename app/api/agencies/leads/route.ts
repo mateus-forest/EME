@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 
 import { NextResponse } from "next/server"
@@ -12,7 +13,7 @@ import {
 import { leadInclude, serializeLead } from "@/lib/lead-contract"
 import { prisma } from "@/lib/prisma"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -57,3 +58,5 @@ export async function GET() {
     return NextResponse.json({ error: "Erro interno ao listar leads da imobiliaria." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/agencies/leads", handleGET)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -31,7 +32,7 @@ function parseMoney(value: unknown) {
   return Number.isFinite(amount) ? Math.round(amount * 100) : null
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
   try {
@@ -93,3 +94,5 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Não foi possível atualizar a locação." }, { status: isPrismaUnavailable(error) ? 503 : 500 })
   }
 }
+
+export const PATCH = withJourneyRoute("/api/properties/rentals/[id]", handlePATCH)

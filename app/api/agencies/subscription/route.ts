@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { SubscriptionOwnerType, UserRole } from "@/lib/prisma-enums"
 
 import { NextResponse } from "next/server"
@@ -25,7 +26,7 @@ function formatCurrency(cents: number) {
   }).format(cents / 100)
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -88,3 +89,5 @@ export async function GET() {
     return NextResponse.json({ error: "Erro interno ao consultar assinatura da imobiliária." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/agencies/subscription", handleGET)

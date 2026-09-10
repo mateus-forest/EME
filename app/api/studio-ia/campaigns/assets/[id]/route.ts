@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -25,7 +26,7 @@ function readStatus(value: unknown): StudioCampaignAssetStatus | null {
     : null
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -71,7 +72,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
   }
 }
 
-export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -102,3 +103,6 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
     return NextResponse.json({ error: "Nao foi possivel excluir o asset." }, { status: 500 })
   }
 }
+
+export const PATCH = withJourneyRoute("/api/studio-ia/campaigns/assets/[id]", handlePATCH)
+export const DELETE = withJourneyRoute("/api/studio-ia/campaigns/assets/[id]", handleDELETE)

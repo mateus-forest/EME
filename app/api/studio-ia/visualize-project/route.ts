@@ -1,3 +1,5 @@
+import { studioJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { createHash } from "node:crypto"
 
 import type { Prisma } from "@prisma/client"
@@ -106,7 +108,7 @@ function isUnique(error: unknown) {
   return Boolean(error && typeof error === "object" && "code" in error && error.code === "P2002")
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? json({ error: "Não autenticado." }, 401)
   const jobId = request.nextUrl.searchParams.get("jobId")
@@ -118,7 +120,7 @@ export async function GET(request: NextRequest) {
   return json({ campaign }, 200)
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? json({ error: "Não autenticado." }, 401)
   if (user.role !== UserRole.BROKER && user.role !== UserRole.AGENCY) return json({ error: "Acesso não permitido." }, 403)
@@ -215,10 +217,12 @@ export async function POST(request: NextRequest) {
       } })
     })
 
+    studioJourney(campaignId, "completed", { userId: user.id, brokerId: user.broker?.id })
     const campaign = await getStudioCampaignById(user, campaignId)
     return json({ campaign }, 201)
   } catch (caughtError) {
     if (campaignId && lockId) {
+      studioJourney(campaignId, "failed", { errorCode: "PROJECT_GENERATION_FAILED" })
       await prisma.$transaction([
         prisma.studioCampaignAsset.deleteMany({ where: { id: lockId, campaignId } }),
         prisma.studioCampaign.updateMany({ where: { id: campaignId, status: "PROCESSING" }, data: { status: "FAILED" } }),
@@ -233,3 +237,6 @@ export async function POST(request: NextRequest) {
     return json({ error: "Não foi possível gerar a visualização agora." }, 500)
   }
 }
+
+export const GET = withJourneyRoute("/api/studio-ia/visualize-project", handleGET)
+export const POST = withJourneyRoute("/api/studio-ia/visualize-project", handlePOST)

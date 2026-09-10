@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { clearTrustedDeviceCookie } from "@/lib/premium-auth"
@@ -15,7 +16,7 @@ function maskEmail(email: string) {
   return `${safeLocal}@${domain}`
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const trustedDevice = await resolveTrustedDevice(request)
 
   if (!trustedDevice) {
@@ -44,3 +45,5 @@ export async function GET(request: NextRequest) {
 
   return response
 }
+
+export const GET = withJourneyRoute("/api/auth/device", handleGET)

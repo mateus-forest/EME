@@ -1,4 +1,5 @@
 "use client"
+import { signupJourneyStarted, signupJourneyInvalid, signupJourneyProgress } from "@/lib/journey/browser"
 
 import Image from "next/image"
 import Link from "next/link"
@@ -70,6 +71,7 @@ const AUTH_THEME = {
 export function AuthV0Experience() {
   const pathname = usePathname()
   const mode = pathname.startsWith("/cadastro") ? "signup" : "login"
+  useEffect(() => { if (mode === "signup") signupJourneyStarted("auth_page") }, [mode])
 
   return (
     <main
@@ -178,6 +180,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
     setSignupError("")
 
     if (!creciUf || !creci.trim()) {
+      signupJourneyInvalid("CRECI_INVALID")
       setSignupError("Informe a UF e o número do CRECI.")
       setIsSubmitting(false)
       return
@@ -279,7 +282,7 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
             </AnimatePresence>
           </div>
 
-          <motion.form
+          <motion.form onBlurCapture={event => { if (mode === "signup") signupJourneyProgress(event.currentTarget) }} onInvalidCapture={() => { if (mode === "signup") signupJourneyInvalid() }}
             layout
             transition={{ duration: 0.6, ease: easeOut }}
             onSubmit={isLogin ? handleLoginSubmit : handleSignupSubmit}

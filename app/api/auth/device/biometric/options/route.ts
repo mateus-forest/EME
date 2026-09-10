@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { generateAuthenticationOptions } from "@simplewebauthn/server"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -11,7 +12,7 @@ import {
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const trustedDevice = await resolveTrustedDevice(request)
 
   if (!trustedDevice) {
@@ -44,3 +45,5 @@ export async function POST(request: NextRequest) {
   })
   return response
 }
+
+export const POST = withJourneyRoute("/api/auth/device/biometric/options", handlePOST)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 
 import { NextRequest, NextResponse } from "next/server"
@@ -15,7 +16,7 @@ import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
 import { formatPhone, normalizeCep, normalizeCpfCnpj, normalizePhone, parseBrazilianDateToIso } from "@/lib/structured-fields"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -61,7 +62,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -293,3 +294,6 @@ function leadCreateErrorMessage(error: unknown) {
 
   return "Nao foi possivel cadastrar o cliente agora. Revise os dados e tente novamente."
 }
+
+export const GET = withJourneyRoute("/api/brokers/leads", handleGET)
+export const POST = withJourneyRoute("/api/brokers/leads", handlePOST)

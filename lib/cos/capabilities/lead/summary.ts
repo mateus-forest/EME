@@ -1,3 +1,4 @@
+import { leadCreatedJourney } from "@/lib/journey/business"
 import type { Prisma } from "@prisma/client"
 
 import { LeadStatus } from "@/lib/prisma-enums"
@@ -92,6 +93,7 @@ export const createLeadCapability: CosCapabilityHandler = async ({ brokerId, use
           message,
         },
       })
+    if (!existingLead) leadCreatedJourney(lead, "cos")
 
   await prisma.notification.create({
     data: {

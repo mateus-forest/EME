@@ -1,3 +1,5 @@
+import { checkoutJourney, journeyStripeMetadata } from "@/lib/journey/stripe"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 import type Stripe from "stripe"
@@ -87,7 +89,7 @@ function getCapacityMutationIdempotencyKey(
   ].join(":").slice(0, 255)
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -325,6 +327,7 @@ export async function POST(request: NextRequest) {
         customer: user.stripeCustomerId ?? undefined,
         customer_email: user.stripeCustomerId ? undefined : user.email,
         metadata: {
+          ...journeyStripeMetadata(),
           userId: user.id,
           role: user.role,
           checkoutType: "package",
@@ -334,6 +337,7 @@ export async function POST(request: NextRequest) {
         },
       })
 
+      checkoutJourney(session, "started", user.id)
       return NextResponse.json({ url: session.url })
     }
 
@@ -452,6 +456,7 @@ export async function POST(request: NextRequest) {
       customer: user.stripeCustomerId ?? undefined,
       customer_email: user.stripeCustomerId ? undefined : user.email,
       metadata: {
+        ...journeyStripeMetadata(),
         userId: user.id,
         role: user.role,
         checkoutType: "subscription",
@@ -460,6 +465,7 @@ export async function POST(request: NextRequest) {
       },
       subscription_data: {
         metadata: {
+          ...journeyStripeMetadata(),
           userId: user.id,
           role: user.role,
           checkoutType: "subscription",
@@ -469,6 +475,7 @@ export async function POST(request: NextRequest) {
       },
     })
 
+    checkoutJourney(session, "started", user.id)
     return NextResponse.json({ url: session.url })
   } catch (caughtError) {
     console.error("[api][stripe][create-checkout] failed", {
@@ -478,3 +485,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível iniciar o checkout." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/stripe/create-checkout", handlePOST)

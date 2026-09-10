@@ -1,7 +1,8 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from 'next/server'
 import { createMarketplaceConversation } from '@/lib/marketplace/communication'
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const conversation = await createMarketplaceConversation({
@@ -20,3 +21,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Não foi possível iniciar a conversa.' }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/marketplace/conversations", handlePOST)

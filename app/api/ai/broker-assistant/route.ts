@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -31,7 +32,7 @@ async function getBrokerCredits(brokerId: string) {
   }
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -66,7 +67,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -178,3 +179,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível acionar o Assessor EME agora." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/ai/broker-assistant", handleGET)
+export const POST = withJourneyRoute("/api/ai/broker-assistant", handlePOST)

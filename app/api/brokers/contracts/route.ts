@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -461,7 +462,7 @@ function createExternalContractContent(input: {
   return content
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -526,7 +527,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -675,3 +676,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível criar o contrato." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contracts", handleGET)
+export const POST = withJourneyRoute("/api/brokers/contracts", handlePOST)

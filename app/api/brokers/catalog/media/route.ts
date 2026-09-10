@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -24,7 +25,7 @@ function isMediaKind(value: unknown): value is MediaKind {
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -83,7 +84,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function DELETE(request: NextRequest) {
+async function handleDELETE(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -115,3 +116,6 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível remover o arquivo." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/brokers/catalog/media", handlePOST)
+export const DELETE = withJourneyRoute("/api/brokers/catalog/media", handleDELETE)

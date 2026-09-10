@@ -1,3 +1,5 @@
+import { startStudioJourney, failStudioJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 
@@ -71,7 +73,7 @@ function detectConstructionScenario(property: { title: string; description: stri
   )
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -104,6 +106,7 @@ export async function POST(request: NextRequest) {
     }
 
     const location = [property.neighborhood, property.city].filter(Boolean).join(", ")
+    startStudioJourney()
     const result = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/sell-property",
@@ -178,6 +181,7 @@ export async function POST(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {
+    failStudioJourney()
     console.error("[api][studio-ia][sell-property] generation failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
@@ -202,3 +206,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/studio-ia/sell-property", handlePOST)

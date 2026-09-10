@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -26,7 +27,7 @@ function serializeConversation(document: { id: string; title: string; content?: 
   }
 }
 
-export async function GET(request: Request) {
+async function handleGET(request: Request) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -75,7 +76,7 @@ export async function GET(request: Request) {
   }
 }
 
-export async function POST() {
+async function handlePOST() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -108,3 +109,6 @@ export async function POST() {
     return NextResponse.json({ error: "Não foi possível criar a conversa." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/assistant/eme/conversations", handleGET)
+export const POST = withJourneyRoute("/api/assistant/eme/conversations", handlePOST)

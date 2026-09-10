@@ -1,3 +1,5 @@
+import { propertyCreatedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -38,7 +40,7 @@ function buildDescription(draft: AdImportDraft) {
     .join("\n\n")
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -105,6 +107,7 @@ export async function POST(request: NextRequest) {
       },
       include: propertyInclude,
     })
+    propertyCreatedJourney(created, "import")
 
     const response = NextResponse.json({ property: serializeProperty(created) }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -124,3 +127,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nao foi possivel criar o imovel a partir do anuncio." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/properties/import/ad/confirm", handlePOST)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from "next/server"
 
 import { createAuthToken, setAuthCookie } from "@/lib/auth"
@@ -6,7 +7,7 @@ import { buildSessionProfile } from "@/lib/session-profile"
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -26,3 +27,5 @@ export async function GET() {
 
   return response
 }
+
+export const GET = withJourneyRoute("/api/auth/me", handleGET)

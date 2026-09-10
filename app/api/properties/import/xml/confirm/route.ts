@@ -1,3 +1,5 @@
+import { propertyCreatedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -66,7 +68,7 @@ function sanitizeProperty(value: unknown): ParsedXmlProperty | null {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -183,6 +185,7 @@ export async function POST(request: NextRequest) {
         },
         include: propertyInclude,
       })
+      propertyCreatedJourney(created, "import")
 
       report.imported += 1
       report.importedProperties.push(serializeProperty(created))
@@ -206,3 +209,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível importar os imóveis do XML." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/properties/import/xml/confirm", handlePOST)

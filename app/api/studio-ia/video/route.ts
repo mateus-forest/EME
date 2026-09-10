@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 import { createHash } from "node:crypto"
 import { z } from "zod"
@@ -542,7 +543,7 @@ async function syncStudioVideoCampaign(input: {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
@@ -631,7 +632,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
@@ -1147,7 +1148,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
@@ -1272,3 +1273,7 @@ export async function PATCH(request: NextRequest) {
     )
   }
 }
+
+export const GET = withJourneyRoute("/api/studio-ia/video", handleGET)
+export const POST = withJourneyRoute("/api/studio-ia/video", handlePOST)
+export const PATCH = withJourneyRoute("/api/studio-ia/video", handlePATCH)

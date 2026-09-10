@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -19,7 +20,7 @@ async function requireBroker() {
   return user
 }
 
-export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -68,3 +69,5 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({ error: "Não foi possível abrir o contrato anexado." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contracts/[id]/file", handleGET)

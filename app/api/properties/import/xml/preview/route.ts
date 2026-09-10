@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
@@ -68,7 +69,7 @@ async function resolveXmlInput(formData: FormData) {
   return xml
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -144,3 +145,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/properties/import/xml/preview", handlePOST)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 
 import { NextRequest,
@@ -73,7 +74,7 @@ async function resolveAccessibleProperty(
   return { error: null, property }
 }
 
-export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -142,7 +143,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -191,3 +192,6 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
     return NextResponse.json({ error: "Erro interno ao remover o áudio do imóvel." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/properties/[id]/audio", handlePOST)
+export const DELETE = withJourneyRoute("/api/properties/[id]/audio", handleDELETE)

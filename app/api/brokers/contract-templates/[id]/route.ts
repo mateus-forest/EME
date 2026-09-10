@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -26,7 +27,7 @@ async function requireBroker() {
 
 const include = { versions: { orderBy: { version: "desc" as const } } }
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const { id } = await context.params
@@ -50,7 +51,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function DELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const brokerId = auth.user.broker!.id
@@ -80,7 +81,7 @@ export async function DELETE(_request: NextRequest, context: { params: Promise<{
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const { id } = await context.params
@@ -203,3 +204,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Não foi possível salvar a revisão deste modelo." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contract-templates/[id]", handleGET)
+export const DELETE = withJourneyRoute("/api/brokers/contract-templates/[id]", handleDELETE)
+export const PATCH = withJourneyRoute("/api/brokers/contract-templates/[id]", handlePATCH)

@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import {
   UserRole } from "@/lib/prisma-enums"
 import {
@@ -26,7 +27,7 @@ function serializeNotification(notification: Notification) {
   }
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -66,7 +67,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -120,3 +121,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao atualizar notificação da imobiliária." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/agencies/notifications", handleGET)
+export const PATCH = withJourneyRoute("/api/agencies/notifications", handlePATCH)

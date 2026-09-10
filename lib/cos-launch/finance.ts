@@ -1,3 +1,4 @@
+import { emitJourney, getJourneyContext } from "@/lib/journey/server"
 import "server-only"
 
 import {
@@ -216,11 +217,15 @@ export async function createCosLaunchFinancialRecord(input: {
   userId: string
   payload: Record<string, unknown>
 }): Promise<CosLaunchResponse> {
+  const failure = (response: CosLaunchResponse, errorCode: string) => {
+    emitJourney("cos_action_failed", { dedupeKey: getJourneyContext()?.requestId, userId: input.userId, brokerId: input.brokerId, module: "cos", step: "action", outcome: "failed", errorCode })
+    return response
+  }
   const relations = await resolveRelations(input.brokerId, input.payload)
-  if ("error" in relations) return { message: relations.error || "Não foi possível validar os vínculos do lançamento." }
+  if ("error" in relations) return failure({ message: relations.error || "Não foi possível validar os vínculos do lançamento." }, "COS_FINANCE_INVALID_RELATIONS")
 
   const dueDate = parseDate(input.payload.dueDate ?? input.payload.date)
-  if (!dueDate) return { message: "Informe uma data válida para o lançamento." }
+  if (!dueDate) return failure({ message: "Informe uma data válida para o lançamento." }, "COS_FINANCE_INVALID_DATE")
   const notes = cleanText(input.payload.notes, 2000) || null
 
   if (input.kind === "financial_commission") {
@@ -230,11 +235,11 @@ export async function createCosLaunchFinancialRecord(input: {
       ? input.payload.status
       : "EXPECTED"
     if (!relations.leadId || !relations.propertyId) {
-      return { message: "Selecione cliente e imóvel para registrar a comissão." }
+      return failure({ message: "Selecione cliente e imóvel para registrar a comissão." }, "COS_FINANCE_MISSING_RELATIONS")
     }
-    if (!operationAmount || operationAmount <= 0) return { message: "Informe o valor da operação." }
+    if (!operationAmount || operationAmount <= 0) return failure({ message: "Informe o valor da operação." }, "COS_FINANCE_INVALID_AMOUNT")
     if (commissionPercent === null || commissionPercent <= 0 || commissionPercent > 100) {
-      return { message: "Informe um percentual de comissão entre 0 e 100%." }
+      return failure({ message: "Informe um percentual de comissão entre 0 e 100%." }, "COS_FINANCE_INVALID_PERCENT")
     }
     const commissionAmount = Math.round(operationAmount * (commissionPercent / 100))
     const receivedAt = status === "RECEIVED"
@@ -264,6 +269,7 @@ export async function createCosLaunchFinancialRecord(input: {
         },
       }),
     ])
+    emitJourney("cos_action_completed", { dedupeKey: getJourneyContext()?.requestId, userId: input.userId, brokerId: input.brokerId, module: "cos", step: "action", outcome: "completed" })
 
     return {
       message: `Comissão registrada: ${formatCurrencyBRLFromCents(operationAmount)} × ${commissionPercent.toLocaleString("pt-BR")}% = ${formatCurrencyBRLFromCents(commissionAmount)}.`,
@@ -281,9 +287,9 @@ export async function createCosLaunchFinancialRecord(input: {
   const defaultStatus = isIncome ? "EXPECTED" : "PENDING"
   const status = isOneOf(input.payload.status, statuses) ? input.payload.status : defaultStatus
 
-  if (!description) return { message: "Informe a descrição do lançamento." }
-  if (!isOneOf(category, categories)) return { message: "Selecione uma categoria válida." }
-  if (!amount || amount <= 0) return { message: "Informe um valor maior que zero." }
+  if (!description) return failure({ message: "Informe a descrição do lançamento." }, "COS_FINANCE_MISSING_DESCRIPTION")
+  if (!isOneOf(category, categories)) return failure({ message: "Selecione uma categoria válida." }, "COS_FINANCE_INVALID_CATEGORY")
+  if (!amount || amount <= 0) return failure({ message: "Informe um valor maior que zero." }, "COS_FINANCE_INVALID_AMOUNT")
 
   const occurredAt = status === "RECEIVED" || status === "PAID"
     ? parseDate(input.payload.occurredAt ?? input.payload.receivedAt ?? input.payload.date) ?? new Date()
@@ -314,6 +320,7 @@ export async function createCosLaunchFinancialRecord(input: {
       },
     }),
   ])
+    emitJourney("cos_action_completed", { dedupeKey: getJourneyContext()?.requestId, userId: input.userId, brokerId: input.brokerId, module: "cos", step: "action", outcome: "completed" })
 
   return {
     message: `${isIncome ? "Recebimento" : "Despesa"} registrado: ${description} — ${formatCurrencyBRLFromCents(amount)}.`,

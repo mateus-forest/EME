@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureRole, getAuthenticatedUser } from '@/lib/auth-route'
 import { UserRole } from '@/lib/prisma-enums'
@@ -25,7 +26,7 @@ async function payloadFor(brokerId: string, slug: string) {
   return { profile, settings: settings ? { slug: settings.catalogSlug, displayName: settings.user.name, photoUrl: settings.user.photoUrl || '', specialties: settings.marketplaceSpecialties, region: settings.marketplaceRegion || '', transactions: settings.marketplaceTransactions || 'BOTH', bio: settings.catalogBio || settings.description || '' } : null, publicPath: profile ? `/imoveis/corretores/${encodeURIComponent(slug)}` : null, properties: properties.map((item) => ({ ...item, price: Math.round(item.price / 100), image: Array.isArray(item.imageUrls) ? item.imageUrls.find((image): image is string => typeof image === 'string') || '' : '', imageUrls: undefined })), leads: leads.map((lead) => ({ ...lead, createdAt: lead.createdAt.toISOString() })), counts: { conversations, properties: properties.length, leads: leads.length, reviews: Object.fromEntries(reviewCounts.map((row) => [row.status, row._count])) } }
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER]); if (forbidden) return forbidden
@@ -33,7 +34,7 @@ export async function GET() {
   return NextResponse.json(await payloadFor(user.broker.id, user.broker.catalogSlug))
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER]); if (forbidden) return forbidden
@@ -61,3 +62,6 @@ export async function PATCH(request: NextRequest) {
   await prisma.broker.update({ where: { id: user.broker.id }, data: { marketplaceSpecialties: specialties, marketplaceRegion: region || null, catalogBio: bio || null, marketplaceTransactions: transactions } })
   return NextResponse.json(await payloadFor(user.broker.id, user.broker.catalogSlug))
 }
+
+export const GET = withJourneyRoute("/api/brokers/marketplace", handleGET)
+export const PATCH = withJourneyRoute("/api/brokers/marketplace", handlePATCH)

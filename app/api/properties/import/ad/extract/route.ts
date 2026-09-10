@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -21,7 +22,7 @@ async function fileToDataUrl(file: File) {
   return `data:${contentType};base64,${Buffer.from(arrayBuffer).toString("base64")}`
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -243,3 +244,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Nao foi possivel extrair os dados do anuncio." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/properties/import/ad/extract", handlePOST)

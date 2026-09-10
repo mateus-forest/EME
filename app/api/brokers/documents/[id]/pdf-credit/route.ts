@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -6,7 +7,7 @@ import { prisma } from "@/lib/prisma"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(_request: Request, context: { params: Promise<{ id: string }> }) {
+async function handlePOST(_request: Request, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Nao autenticado." }, { status: 401 })
 
@@ -44,3 +45,5 @@ export async function POST(_request: Request, context: { params: Promise<{ id: s
     return NextResponse.json({ error: "Nao foi possivel preparar o PDF." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/brokers/documents/[id]/pdf-credit", handlePOST)

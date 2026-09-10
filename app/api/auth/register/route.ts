@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { CatalogOwnerType, SubscriptionOwnerType, SubscriptionStatus, UserRole } from "@/lib/prisma-enums"
 
 import { hash } from "bcryptjs"
@@ -58,7 +59,7 @@ function isSlugUniqueConstraintError(error: unknown) {
   return code === "P2002" && target.some((field) => field === "slug" || field === "catalogSlug")
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
 
@@ -274,3 +275,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao criar a conta." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/auth/register", handlePOST)

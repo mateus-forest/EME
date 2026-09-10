@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 
 import { NextRequest,
@@ -70,7 +71,7 @@ function getExistingImages(property: { imageUrls: unknown }) {
     : []
 }
 
-export async function POST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -145,7 +146,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function DELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleDELETE(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -206,3 +207,6 @@ export async function DELETE(request: NextRequest, context: { params: Promise<{ 
     return NextResponse.json({ error: "Erro interno ao remover a imagem do imóvel." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/properties/[id]/images", handlePOST)
+export const DELETE = withJourneyRoute("/api/properties/[id]/images", handleDELETE)

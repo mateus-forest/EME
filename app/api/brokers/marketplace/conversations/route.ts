@@ -1,9 +1,10 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from 'next/server'
 import { ensureRole, getAuthenticatedUser } from '@/lib/auth-route'
 import { UserRole } from '@/lib/prisma-enums'
 import { getBrokerMarketplaceConversations } from '@/lib/marketplace/communication'
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: 'Não autenticado.' }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -12,3 +13,5 @@ export async function GET() {
   const conversations = await getBrokerMarketplaceConversations(user.broker.id)
   return NextResponse.json({ conversations })
 }
+
+export const GET = withJourneyRoute("/api/brokers/marketplace/conversations", handleGET)

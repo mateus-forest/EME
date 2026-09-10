@@ -1,3 +1,6 @@
+import { createHash } from "node:crypto"
+import { emitJourney } from "@/lib/journey/server"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
@@ -13,7 +16,7 @@ function stringRecord(value: unknown) {
   return Object.fromEntries(Object.entries(value as Record<string, unknown>).filter((entry): entry is [string, string] => typeof entry[1] === "string"))
 }
 
-export async function GET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -69,6 +72,7 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
         })] : []),
       ])
     }
+    if (!draft) emitJourney("contract_generated", { dedupeKey: `${instance.id}:${createHash("sha256").update(JSON.stringify({ title: instance.title, structure, values })).digest("hex")}`, brokerId: instance.brokerId, propertyId: instance.propertyId, module: "contracts", outcome: "completed", metadata: { documentId: instance.id, draft: false } })
     const safeName = instance.title.replace(/[^\p{L}\p{N}.-]+/gu, "-").replace(/-+/g, "-").slice(0, 120) || "contrato"
     return new NextResponse(new Uint8Array(pdf), {
       headers: {
@@ -82,3 +86,5 @@ export async function GET(request: NextRequest, context: { params: Promise<{ id:
     return NextResponse.json({ error: "Não foi possível gerar o PDF deste contrato." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contract-instances/[id]/pdf", handleGET)

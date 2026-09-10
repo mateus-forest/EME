@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -12,7 +13,7 @@ import { parseEntityDocuments } from "@/lib/legal-entities"
 import { prisma } from "@/lib/prisma"
 import { normalizeCep, normalizeCpfCnpj, normalizePhone, parseBrazilianDateToIso } from "@/lib/structured-fields"
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -91,7 +92,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
   }
 }
 
-export async function DELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleDELETE(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -186,3 +187,6 @@ function normalizeLeadLegal(value: unknown) {
 function normalizeDocuments(value: unknown) {
   return parseEntityDocuments(value).map((document) => normalizeEntityDocumentForStorage(document, cleanText))
 }
+
+export const PATCH = withJourneyRoute("/api/leads/[id]", handlePATCH)
+export const DELETE = withJourneyRoute("/api/leads/[id]", handleDELETE)

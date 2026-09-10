@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import {
   UserRole } from "@/lib/prisma-enums"
 import {
@@ -35,7 +36,7 @@ function buildAgencyProfile(user: AgencyProfileUser | null) {
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUserWithPassword()
 
   if (error || !user) {
@@ -55,7 +56,7 @@ export async function GET() {
   return response
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithPassword()
 
   if (error || !user) {
@@ -182,3 +183,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao atualizar a conta da imobiliária." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/agencies/me", handleGET)
+export const PATCH = withJourneyRoute("/api/agencies/me", handlePATCH)

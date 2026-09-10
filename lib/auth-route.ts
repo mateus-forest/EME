@@ -1,3 +1,4 @@
+import { setJourneyActor } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { cookies } from "next/headers"
 import { NextResponse } from "next/server"
@@ -201,6 +202,7 @@ export async function getAuthenticatedUser() {
       return { error: invalidSessionResponse(), user: null }
     }
 
+    setJourneyActor(user.id)
     return { error: null, user }
   } catch (error) {
     console.error("[auth][route] session validation failed", {
@@ -241,6 +243,7 @@ export async function getAuthenticatedUserWithPassword() {
       return { error: invalidSessionResponse(), user: null }
     }
 
+    setJourneyActor(user.id)
     return { error: null, user }
   } catch (error) {
     console.error("[auth][route] password-auth session validation failed", {
@@ -283,6 +286,7 @@ export async function getAuthenticatedUserWithSensitiveFields() {
         return { error: invalidSessionResponse(), user: null }
       }
 
+      setJourneyActor(user.id)
       return { error: null, user: { ...user, pinSchemaAvailable: true } }
     } catch (error) {
       if (!isPrismaSchemaMismatch(error)) {

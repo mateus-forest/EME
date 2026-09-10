@@ -1,3 +1,4 @@
+import { propertyCreatedJourney } from "@/lib/journey/business"
 import "server-only"
 
 import type { Prisma } from "@prisma/client"
@@ -264,6 +265,7 @@ export async function createPropertyDraftRecord(input: {
       brokerId: input.brokerId,
     },
   })
+  propertyCreatedJourney(property)
 
   await prisma.notification.create({
     data: {

@@ -1,3 +1,5 @@
+import { checkoutJourney, checkoutResolutionMissingJourney } from "@/lib/journey/stripe"
+import { withJourneyRoute } from "@/lib/journey/server"
 import type Stripe from "stripe"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -364,6 +366,7 @@ async function fulfillPackageCheckout(eventId: string, session: Stripe.Checkout.
     },
   })
 
+  checkoutJourney(session, "completed", metadata.userId)
   console.info("[api][stripe][webhook][package] fulfillment processed", {
     eventId,
     checkoutSessionId: session.id,
@@ -373,7 +376,7 @@ async function fulfillPackageCheckout(eventId: string, session: Stripe.Checkout.
   return result
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const stripeEnv = getStripeEnv()
   if (!stripeEnv.enabled) {
     return NextResponse.json({ error: "Webhook Stripe ainda não está habilitado neste ambiente." }, { status: 503 })
@@ -413,6 +416,8 @@ export async function POST(request: NextRequest) {
         if (subscriptionId) {
           const subscription = await stripe.subscriptions.retrieve(subscriptionId)
           const syncedUser = await syncBillingFromStripeSubscription(subscription)
+          if (!syncedUser) checkoutResolutionMissingJourney(session)
+          if (syncedUser && (isConfirmedStripePayment(session.payment_status) || (session.payment_status === "no_payment_required" && subscription.status === "trialing"))) checkoutJourney(session, "completed", syncedUser.id, new Date(event.created * 1000).toISOString())
           const state = syncedUser ? await readBillingEventState(subscription) : null
           if (
             syncedUser &&
@@ -436,6 +441,7 @@ export async function POST(request: NextRequest) {
       }
 
       case "checkout.session.async_payment_failed":
+        checkoutJourney(event.data.object as Stripe.Checkout.Session, "failed", undefined, new Date(event.created * 1000).toISOString())
         console.warn("[api][stripe][webhook][package] asynchronous payment failed", { eventId: event.id })
         break
 
@@ -504,3 +510,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Falha interna ao processar o webhook Stripe." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/stripe/webhook", handlePOST)

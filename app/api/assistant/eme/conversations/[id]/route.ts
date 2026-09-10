@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -251,7 +252,7 @@ async function getConversationOrError(id: string) {
   return { error: null, user, conversation }
 }
 
-export async function GET(_request: NextRequest, context: RouteContext) {
+async function handleGET(_request: NextRequest, context: RouteContext) {
   const { id } = await context.params
 
   try {
@@ -299,7 +300,7 @@ export async function GET(_request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+async function handlePATCH(request: NextRequest, context: RouteContext) {
   const { id } = await context.params
 
   try {
@@ -331,7 +332,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function DELETE(_request: NextRequest, context: RouteContext) {
+async function handleDELETE(_request: NextRequest, context: RouteContext) {
   const { id } = await context.params
 
   try {
@@ -375,3 +376,7 @@ export async function DELETE(_request: NextRequest, context: RouteContext) {
     return NextResponse.json({ error: "Não foi possível excluir a conversa." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/assistant/eme/conversations/[id]", handleGET)
+export const PATCH = withJourneyRoute("/api/assistant/eme/conversations/[id]", handlePATCH)
+export const DELETE = withJourneyRoute("/api/assistant/eme/conversations/[id]", handleDELETE)

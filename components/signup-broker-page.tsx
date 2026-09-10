@@ -1,7 +1,8 @@
 "use client"
+import { signupJourneyStarted, signupJourneyInvalid, signupJourneyProgress } from "@/lib/journey/browser"
 
 import { useRouter } from "next/navigation"
-import { FormEvent, useState } from "react"
+import { FormEvent, useEffect, useState } from "react"
 
 import { AuthShell } from "@/components/auth-shell"
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
@@ -12,6 +13,7 @@ import { normalizePhone } from "@/lib/structured-fields"
 import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 
 export function SignupBrokerPage() {
+  useEffect(() => { signupJourneyStarted("signup_page") }, [])
   const router = useRouter()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [name, setName] = useState("")
@@ -69,7 +71,7 @@ export function SignupBrokerPage() {
       subtitle="Crie sua conta e comece a publicar imóveis com rapidez em poucos passos."
       footer={<p className="text-sm text-[#6B7280]">MVP focado em corretores individuais.</p>}
     >
-      <form onSubmit={handleSubmit} className="grid gap-5">
+      <form onBlurCapture={event => { signupJourneyProgress(event.currentTarget) }} onInvalidCapture={() => signupJourneyInvalid()} onSubmit={handleSubmit} className="grid gap-5">
         <div className="space-y-2">
           <label htmlFor="nome" className="text-sm font-medium text-[#374151]">
             Nome

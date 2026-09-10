@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -9,7 +10,7 @@ export const runtime = "nodejs"
 
 const PORTAL_ACTIONS = new Set(["payment_method", "manage", "cancel", "resume"])
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -72,3 +73,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível abrir o portal de faturamento do Stripe." }, { status: 502 })
   }
 }
+
+export const POST = withJourneyRoute("/api/stripe/customer-portal", handlePOST)

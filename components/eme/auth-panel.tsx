@@ -1,4 +1,5 @@
 "use client"
+import { signupJourneyStarted, signupJourneyInvalid, signupJourneyProgress } from "@/lib/journey/browser"
 
 import { useEffect, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
@@ -25,6 +26,7 @@ export function AuthPanel({
 }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  useEffect(() => { if (mode === "signup") signupJourneyStarted("landing_modal") }, [mode])
   const isLogin = mode === "login"
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [name, setName] = useState("")
@@ -125,11 +127,13 @@ export function AuthPanel({
     const normalizedEmail = signupEmail.trim().toLowerCase()
 
     if (!trimmedName || !normalizedEmail || !signupPassword || !creciUf || !creci.trim()) {
+      signupJourneyInvalid("REQUIRED_FIELDS")
       setError("Nome, email, senha, UF e CRECI são obrigatórios.")
       return
     }
 
     if (signupPassword !== confirmPassword) {
+      signupJourneyInvalid("PASSWORD_MISMATCH")
       setError("As senhas não coincidem.")
       return
     }
@@ -233,7 +237,7 @@ export function AuthPanel({
                   </p>
                 </div>
 
-                <form className="mt-6 flex flex-col gap-3 sm:mt-7" onSubmit={handleSubmit}>
+                <form onBlurCapture={event => { if (!isLogin) signupJourneyProgress(event.currentTarget) }} onInvalidCapture={() => { if (!isLogin) signupJourneyInvalid() }} className="mt-6 flex flex-col gap-3 sm:mt-7" onSubmit={handleSubmit}>
                   {!isLogin ? (
                     <>
                       <Field

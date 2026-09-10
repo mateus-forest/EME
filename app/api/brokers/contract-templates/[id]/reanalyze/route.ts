@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 
@@ -30,7 +31,7 @@ function storedVersionCanBeReady(version: {
   }
 }
 
-export async function POST(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePOST(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -197,3 +198,5 @@ export async function POST(_request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Não foi possível iniciar a reanálise deste modelo." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/brokers/contract-templates/[id]/reanalyze", handlePOST)

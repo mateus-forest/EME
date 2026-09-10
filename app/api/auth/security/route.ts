@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUserWithSensitiveFields } from "@/lib/auth-route"
@@ -27,7 +28,7 @@ function serializeDevice(device: {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
@@ -76,3 +77,5 @@ export async function GET(request: NextRequest) {
   response.headers.set("Cache-Control", "no-store, max-age=0")
   return response
 }
+
+export const GET = withJourneyRoute("/api/auth/security", handleGET)

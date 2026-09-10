@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { Buffer } from "node:buffer"
 
 import { generateRegistrationOptions } from "@simplewebauthn/server"
@@ -13,7 +14,7 @@ import {
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -59,3 +60,5 @@ export async function POST(request: NextRequest) {
   })
   return response
 }
+
+export const POST = withJourneyRoute("/api/auth/security/biometric/register/options", handlePOST)

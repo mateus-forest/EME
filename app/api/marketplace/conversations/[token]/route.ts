@@ -1,7 +1,8 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from 'next/server'
 import { addCustomerMarketplaceMessage, getPublicMarketplaceConversation } from '@/lib/marketplace/communication'
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+async function handleGET(_request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   const { token } = await params
   const conversation = await getPublicMarketplaceConversation(token)
   return conversation
@@ -9,7 +10,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
     : NextResponse.json({ error: 'Conversa não encontrada.' }, { status: 404 })
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
+async function handlePOST(request: NextRequest, { params }: { params: Promise<{ token: string }> }) {
   try {
     const { token } = await params
     const body = await request.json().catch(() => null)
@@ -23,3 +24,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     return NextResponse.json({ error: 'Não foi possível enviar a mensagem.' }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/marketplace/conversations/[token]", handleGET)
+export const POST = withJourneyRoute("/api/marketplace/conversations/[token]", handlePOST)

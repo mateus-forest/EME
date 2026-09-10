@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -38,7 +39,7 @@ function healthyRatio(total: number, unhealthy: number) {
   return clampScore(Math.round(((total - unhealthy) / total) * 100))
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -203,3 +204,5 @@ export async function GET() {
     )
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/operation-health", handleGET)

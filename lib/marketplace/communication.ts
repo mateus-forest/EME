@@ -1,3 +1,4 @@
+import { leadCreatedJourney } from "@/lib/journey/business"
 import 'server-only'
 
 import { prisma } from '@/lib/prisma'
@@ -102,6 +103,7 @@ export async function createMarketplaceConversation(input: {
     : null
   if (input.propertyId && !property) throw new Error('PROPERTY_NOT_FOUND')
 
+  let createdLead: { id: string; brokerId: string | null; propertyId: string | null; catalogSlug: string | null } | null = null
   const conversation = await prisma.$transaction(async (tx) => {
     const existingLead = await tx.lead.findFirst({
       where: {
@@ -140,6 +142,7 @@ export async function createMarketplaceConversation(input: {
           },
         })
 
+    if (!existingLead) createdLead = lead
     const created = await tx.marketplaceConversation.create({
       data: {
         brokerId: broker.id,
@@ -162,6 +165,7 @@ export async function createMarketplaceConversation(input: {
     })
     return created
   })
+  if (createdLead) leadCreatedJourney(createdLead, "marketplace")
   return serializeMarketplaceConversation(conversation)
 }
 

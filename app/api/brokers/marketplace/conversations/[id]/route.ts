@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from 'next/server'
 import { ensureRole, getAuthenticatedUser } from '@/lib/auth-route'
 import { UserRole } from '@/lib/prisma-enums'
@@ -17,7 +18,7 @@ async function brokerId() {
   return { response: null, id: user.broker.id }
 }
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await brokerId()
   if (auth.response) return auth.response
   try {
@@ -28,7 +29,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   }
 }
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePOST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await brokerId()
   if (auth.response) return auth.response
   try {
@@ -53,7 +54,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
   }
 }
 
-export async function PATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const auth = await brokerId()
   if (auth.response) return auth.response
   try {
@@ -66,3 +67,7 @@ export async function PATCH(request: NextRequest, { params }: { params: Promise<
     return NextResponse.json({ error: 'Não foi possível encerrar a conversa.' }, { status: 400 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/marketplace/conversations/[id]", handleGET)
+export const POST = withJourneyRoute("/api/brokers/marketplace/conversations/[id]", handlePOST)
+export const PATCH = withJourneyRoute("/api/brokers/marketplace/conversations/[id]", handlePATCH)

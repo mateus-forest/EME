@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { CatalogOwnerType, CreciValidationStatus, UserRole } from "@/lib/prisma-enums"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -77,7 +78,7 @@ function serialize(user: AuthenticatedCatalogUser) {
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -89,7 +90,7 @@ export async function GET() {
   return response
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -193,3 +194,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao atualizar o catálogo." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/catalog", handleGET)
+export const PATCH = withJourneyRoute("/api/brokers/catalog", handlePATCH)

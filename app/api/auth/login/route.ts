@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { compare } from "bcryptjs"
 import { NextRequest, NextResponse } from "next/server"
 
@@ -12,7 +13,7 @@ import { buildSessionProfile } from "@/lib/session-profile"
 
 export const dynamic = "force-dynamic"
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const method = typeof body?.method === "string" ? body.method : "password"
@@ -149,3 +150,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao processar o login." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/auth/login", handlePOST)

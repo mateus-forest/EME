@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { cleanText, type AssessorAction } from "@/lib/eme-backend"
@@ -85,7 +86,7 @@ function buildDemoActionResponse(mode: LandingDemoMode, message: string, action:
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const clientKey = getClientKey(request)
   const rateStore = getRateStore()
   const now = Date.now()
@@ -156,3 +157,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/assistant/eme-demo", handlePOST)

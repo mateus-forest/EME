@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -110,7 +111,7 @@ function financeError(caughtError: unknown, fallback: string) {
   return NextResponse.json({ error: fallback }, { status: 500 })
 }
 
-export async function GET() {
+async function handleGET() {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -127,7 +128,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -240,7 +241,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
 
@@ -302,3 +303,7 @@ export async function PATCH(request: NextRequest) {
     return financeError(caughtError, "Não foi possível atualizar o financeiro operacional.")
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/financial", handleGET)
+export const POST = withJourneyRoute("/api/brokers/financial", handlePOST)
+export const PATCH = withJourneyRoute("/api/brokers/financial", handlePATCH)

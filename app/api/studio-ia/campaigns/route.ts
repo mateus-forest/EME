@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaSchemaMismatch, isPrismaUnavailable } from "@/lib/auth-route"
@@ -37,7 +38,7 @@ function readAssetType(value: string | null): StudioCampaignAssetType | undefine
     : undefined
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -86,3 +87,5 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "Nao foi possivel carregar as campanhas do Studio IA." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/studio-ia/campaigns", handleGET)

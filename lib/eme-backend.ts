@@ -1,3 +1,5 @@
+import { leadCreatedJourney } from "@/lib/journey/business"
+import { documentCreatedJourney, propertyCreatedJourney } from "@/lib/journey/business"
 import { LeadStatus, PropertyStatus, PropertyType } from "@/lib/prisma-enums"
 import type { Prisma } from "@prisma/client"
 
@@ -1391,6 +1393,7 @@ export async function runLegacyAssessorAction({
         status: "draft",
       },
     })
+    documentCreatedJourney(document)
     await prisma.notification.create({ data: { userId, title: "Proposta gerada", message: `Proposta para ${proposalLead.name || personName || "cliente"} foi salva em Documentos.`, read: false } })
     return {
       response: `Proposta criada em rascunho ✅
@@ -1907,6 +1910,7 @@ Revise e preencha os dados restantes antes de enviar.`,
             message,
           },
         })
+    if (!existingLead) leadCreatedJourney(lead, "cos")
     await prisma.notification.create({
       data: {
         userId,
@@ -2020,6 +2024,7 @@ Revise e preencha os dados restantes antes de enviar.`,
           imageUrls: draft.imageUrl ? [draft.imageUrl] : undefined,
         },
       })
+      propertyCreatedJourney(property)
       await prisma.notification.create({ data: { userId, title: "Imóvel criado em rascunho", message: "Revise antes de publicar.", read: false } })
       return {
         response: `Imóvel criado em rascunho ✅

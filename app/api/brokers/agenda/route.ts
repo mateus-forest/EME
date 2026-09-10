@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -55,7 +56,7 @@ function serializeAgendaEvent(event: {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -144,7 +145,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -206,3 +207,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível atualizar o compromisso." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/agenda", handleGET)
+export const POST = withJourneyRoute("/api/brokers/agenda", handlePOST)
+export const PATCH = withJourneyRoute("/api/brokers/agenda", handlePATCH)

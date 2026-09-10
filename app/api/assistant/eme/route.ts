@@ -1,3 +1,5 @@
+import { emitJourney, getJourneyContext } from "@/lib/journey/server"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 
@@ -571,7 +573,7 @@ function buildConversationMemory(input: {
   }
 }
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -628,7 +630,7 @@ export async function GET() {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -667,7 +669,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   if (isCosV2RuntimeEnabled()) return handleCosV2Post(request)
 
   const { error, user } = await getAuthenticatedUser()
@@ -1090,6 +1092,7 @@ export async function POST(request: NextRequest) {
           },
         }),
       ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
       return NextResponse.json({
         response: responseText,
@@ -1248,6 +1251,7 @@ export async function POST(request: NextRequest) {
           },
         }),
       ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
       return NextResponse.json({
         response: clarificationResponse,
@@ -1346,6 +1350,7 @@ export async function POST(request: NextRequest) {
           },
         }),
       ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
       return NextResponse.json({
         response: workflowDetailsResponse,
@@ -1530,6 +1535,7 @@ export async function POST(request: NextRequest) {
           },
         }),
       ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
       return NextResponse.json({
         response: responseText,
@@ -1645,6 +1651,7 @@ export async function POST(request: NextRequest) {
           },
         }),
       ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
       return NextResponse.json({
         response: responseText,
@@ -1761,6 +1768,7 @@ export async function POST(request: NextRequest) {
           },
         }),
       ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
       return NextResponse.json({
         response: responseText,
@@ -2010,6 +2018,7 @@ export async function POST(request: NextRequest) {
         })
     // Apenas escolhas solicitadas pela capability e seleções necessárias do workflow viram opções.
     // Sugestões genéricas de próximo passo ficam no texto quando forem realmente úteis.
+    if (actionStatus === "error" || (actionStatus === "success" && executionResult?.executedSteps.some(step => step.status === "completed"))) emitJourney(actionStatus === "error" ? "cos_action_failed" : "cos_action_completed", { dedupeKey: `${workflow.id}:${getJourneyContext()?.requestId}`, userId: user.id, brokerId: user.broker.id, module: "cos", step: "action", outcome: actionStatus === "error" ? "failed" : "completed", errorCode: actionStatus === "error" ? "COS_ACTION_FAILED" : null })
     const primaryStepMetadata = (executionResult?.executedSteps.at(-1)?.result?.metadata ?? {}) as Prisma.InputJsonObject
     const responseOptions =
       parseCapabilityProvidedOptions(primaryStepMetadata.options) ??
@@ -2129,6 +2138,7 @@ export async function POST(request: NextRequest) {
         },
       }),
     ])
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: user.id, brokerId: user.broker.id, module: "cos", outcome: "completed" })
 
     return NextResponse.json({
       response: responseText,
@@ -2157,3 +2167,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não consegui concluir sua ação agora. Tente novamente em instantes." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/assistant/eme", handleGET)
+export const PATCH = withJourneyRoute("/api/assistant/eme", handlePATCH)
+export const POST = withJourneyRoute("/api/assistant/eme", handlePOST)

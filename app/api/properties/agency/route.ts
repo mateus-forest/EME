@@ -1,3 +1,5 @@
+import { propertyCreatedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
@@ -24,7 +26,7 @@ const propertyInclude = {
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -68,7 +70,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -153,6 +155,7 @@ export async function POST(request: NextRequest) {
       },
       include: propertyInclude,
     })
+    propertyCreatedJourney(property)
 
     const response = NextResponse.json({ property: serializeProperty(property) }, { status: 201 })
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -172,3 +175,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao criar imóvel da imobiliária." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/properties/agency", handleGET)
+export const POST = withJourneyRoute("/api/properties/agency", handlePOST)

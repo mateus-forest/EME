@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser } from "@/lib/auth-route"
@@ -5,7 +6,7 @@ import { readBrokerContractTemplateFile } from "@/lib/broker-document-storage"
 import { UserRole } from "@/lib/prisma-enums"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   const forbidden = ensureRole(user.role, [UserRole.BROKER])
@@ -36,3 +37,5 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
     return NextResponse.json({ error: "Não foi possível carregar o arquivo original." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contract-templates/[id]/original", handleGET)

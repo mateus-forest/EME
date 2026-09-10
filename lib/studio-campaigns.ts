@@ -1,3 +1,5 @@
+import { getJourneyContext } from "@/lib/journey/server"
+import { studioJourney } from "@/lib/journey/business"
 import "server-only"
 
 import type { Prisma } from "@prisma/client"
@@ -372,6 +374,8 @@ export async function createStudioCampaign(user: AuthenticatedStudioUser, draft:
     include: studioCampaignInclude,
   })
 
+  if (!getJourneyContext()?.studioOperationId) studioJourney(campaign.id, "started", { userId: user.id, brokerId: campaign.brokerId, propertyId: campaign.propertyId })
+  if (["PENDING_REVIEW", "APPROVED", "PUBLISHED"].includes(campaign.status)) studioJourney(campaign.id, "completed", { userId: user.id, brokerId: campaign.brokerId, propertyId: campaign.propertyId })
   return serializeCampaign(campaign)
 }
 
@@ -712,6 +716,8 @@ export async function upsertStudioCampaignAssetByKey(input: {
     include: studioCampaignInclude,
   })
 
+  if (savedCampaign.status === "FAILED") studioJourney(savedCampaign.id, "failed", { userId: savedCampaign.createdByUserId, brokerId: savedCampaign.brokerId, propertyId: savedCampaign.propertyId })
+  else if (["PENDING_REVIEW", "APPROVED", "PUBLISHED"].includes(savedCampaign.status) && savedCampaign.assets.some(asset => savedCampaign.kind === "VIDEO" ? asset.type === "VIDEO" && Boolean(asset.fileUrl) : Boolean(asset.fileUrl || asset.content))) studioJourney(savedCampaign.id, "completed", { userId: savedCampaign.createdByUserId, brokerId: savedCampaign.brokerId, propertyId: savedCampaign.propertyId })
   return serializeCampaign(savedCampaign)
 }
 
@@ -737,5 +743,7 @@ export async function updateStudioCampaignById(input: {
     include: studioCampaignInclude,
   })
 
+  if (savedCampaign.status === "FAILED") studioJourney(savedCampaign.id, "failed", { userId: savedCampaign.createdByUserId, brokerId: savedCampaign.brokerId, propertyId: savedCampaign.propertyId })
+  else if (["PENDING_REVIEW", "APPROVED", "PUBLISHED"].includes(savedCampaign.status) && savedCampaign.assets.some(asset => savedCampaign.kind === "VIDEO" ? asset.type === "VIDEO" && Boolean(asset.fileUrl) : Boolean(asset.fileUrl || asset.content))) studioJourney(savedCampaign.id, "completed", { userId: savedCampaign.createdByUserId, brokerId: savedCampaign.brokerId, propertyId: savedCampaign.propertyId })
   return serializeCampaign(savedCampaign)
 }

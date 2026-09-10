@@ -1,4 +1,5 @@
 "use client"
+import { trackJourney } from "@/lib/journey/browser"
 
 import type { ReactNode } from "react"
 import { useEffect, useMemo, useState } from "react"
@@ -1051,6 +1052,7 @@ async function trackCatalogEvent({
   resultCount?: number
 }) {
   try {
+    if (eventType === "catalog_view" || eventType === "property_view") trackJourney(eventType === "catalog_view" ? "catalog_view" : "catalog_property_opened", { catalogId: catalogSlug, propertyId, module: "catalog", outcome: "viewed", metadata: { legacySource: "CatalogEvent" }, dedupeKey: `${eventType}:${catalogSlug}:${propertyId ?? ""}` })
     await fetch("/api/catalog-events", {
       method: "POST",
       headers: { "Content-Type": "application/json" },

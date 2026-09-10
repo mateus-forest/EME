@@ -1,3 +1,5 @@
+import { documentCreatedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -62,7 +64,7 @@ function serializeDocument(document: {
   }
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -101,7 +103,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -206,6 +208,7 @@ export async function POST(request: NextRequest) {
         property: { select: { id: true, publicCode: true, title: true, city: true, neighborhood: true, price: true, purpose: true, type: true, bedrooms: true, parkingSpots: true } },
       },
     })
+    documentCreatedJourney(document)
 
     await prisma.notification.create({
       data: {
@@ -225,7 +228,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
 
@@ -260,3 +263,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível atualizar o documento." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/documents", handleGET)
+export const POST = withJourneyRoute("/api/brokers/documents", handlePOST)
+export const PATCH = withJourneyRoute("/api/brokers/documents", handlePATCH)

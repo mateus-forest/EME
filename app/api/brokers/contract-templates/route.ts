@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { createHash } from "node:crypto"
 
 import { NextRequest, NextResponse } from "next/server"
@@ -42,7 +43,7 @@ const templateInclude = {
   versions: { orderBy: { version: "desc" as const } },
 }
 
-export async function GET() {
+async function handleGET() {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   try {
@@ -76,7 +77,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const brokerId = auth.user.broker!.id
@@ -202,3 +203,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: described.message }, { status: described.status })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/contract-templates", handleGET)
+export const POST = withJourneyRoute("/api/brokers/contract-templates", handlePOST)

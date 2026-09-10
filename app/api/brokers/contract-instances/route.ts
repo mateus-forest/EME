@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -46,7 +47,7 @@ function cleanId(value: unknown) {
   return typeof value === "string" ? value.trim().slice(0, 100) : ""
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const auth = await requireBroker()
   if ("response" in auth) return auth.response
   const brokerId = auth.user.broker!.id
@@ -150,3 +151,5 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível criar o contrato com este modelo." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/brokers/contract-instances", handlePOST)

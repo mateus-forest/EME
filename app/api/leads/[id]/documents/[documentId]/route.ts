@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -12,7 +13,7 @@ import { parseEntityDocuments } from "@/lib/legal-entities"
 import { getContractIdFromLinkedDocumentId } from "@/lib/linked-contract-document"
 import { prisma } from "@/lib/prisma"
 
-export async function GET(_request: NextRequest, { params }: { params: Promise<{ id: string; documentId: string }> }) {
+async function handleGET(_request: NextRequest, { params }: { params: Promise<{ id: string; documentId: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -106,7 +107,7 @@ export async function GET(_request: NextRequest, { params }: { params: Promise<{
   }
 }
 
-export async function DELETE(
+async function handleDELETE(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string; documentId: string }> },
 ) {
@@ -170,3 +171,6 @@ export async function DELETE(
     return NextResponse.json({ error: "Erro interno ao remover documento do cliente." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/leads/[id]/documents/[documentId]", handleGET)
+export const DELETE = withJourneyRoute("/api/leads/[id]/documents/[documentId]", handleDELETE)

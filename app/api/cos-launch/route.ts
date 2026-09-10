@@ -1,3 +1,5 @@
+import { emitJourney, getJourneyContext } from "@/lib/journey/server"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextResponse } from "next/server"
 import { getAuthenticatedUser } from "@/lib/auth-route"
 import { generateCosConversationTitle, isDefaultCosConversationTitle } from "@/lib/cos-conversations"
@@ -20,7 +22,7 @@ function payload(value: unknown): CosLaunchRequest {
   }
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const auth = await getAuthenticatedUser()
   if (auth.error || !auth.user) return auth.error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
   if (!auth.user.broker) return NextResponse.json({ error: "Perfil de corretor não encontrado." }, { status: 403 })
@@ -79,9 +81,13 @@ export async function POST(request: Request) {
       }),
     ])
 
+    emitJourney("cos_message_sent", { dedupeKey: getJourneyContext()?.requestId, userId: auth.user.id, brokerId: auth.user.broker.id, module: "cos", outcome: "completed" })
     return NextResponse.json(result)
   } catch (error) {
+    emitJourney("cos_action_failed", { dedupeKey: getJourneyContext()?.requestId, userId: auth.user.id, brokerId: auth.user.broker.id, module: "cos", step: "action", outcome: "failed", errorCode: "COS_LAUNCH_FAILED" })
     console.error("[cos-launch] request failed", { brokerId: auth.user.broker.id, error })
     return NextResponse.json({ error: "Não foi possível concluir esta operação agora. Tente novamente." }, { status: 500 })
   }
 }
+
+export const POST = withJourneyRoute("/api/cos-launch", handlePOST)

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import { Barlow } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
 import './globals.css'
+import { JourneyTracker } from '@/components/journey-tracker'
 
 const barlow = Barlow({
   subsets: ['latin'],
@@ -57,6 +58,7 @@ export default function RootLayout({
     <html lang="pt-BR" className="dark">
       <body className={`${barlow.variable} font-sans antialiased bg-[#f6f1e9] text-white`}>
         {children}
+        <JourneyTracker />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>

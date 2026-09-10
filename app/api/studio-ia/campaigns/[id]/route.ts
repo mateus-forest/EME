@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import {
@@ -11,7 +12,7 @@ import { UserRole } from "@/lib/prisma-enums"
 
 export const dynamic = "force-dynamic"
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handleGET(_request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -43,7 +44,7 @@ export async function GET(_request: NextRequest, context: { params: Promise<{ id
   }
 }
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -80,3 +81,6 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Não foi possível aprovar a campanha." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/studio-ia/campaigns/[id]", handleGET)
+export const PATCH = withJourneyRoute("/api/studio-ia/campaigns/[id]", handlePATCH)

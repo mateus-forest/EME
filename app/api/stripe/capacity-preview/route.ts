@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import { NextResponse } from "next/server"
 import type Stripe from "stripe"
@@ -52,7 +53,7 @@ function itemMonthlyAmount(item: Stripe.SubscriptionItem | null) {
   return (item.price.unit_amount ?? 0) * (item.quantity ?? 1)
 }
 
-export async function POST(request: Request) {
+async function handlePOST(request: Request) {
   const { error, user } = await getAuthenticatedUser()
   if (error || !user) {
     return error ?? NextResponse.json({ error: "Não autenticado." }, { status: 401 })
@@ -235,3 +236,5 @@ export async function POST(request: Request) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/stripe/capacity-preview", handlePOST)

@@ -1,3 +1,5 @@
+import { propertyPublishedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
@@ -29,7 +31,7 @@ const propertyInclude = {
 
 export const dynamic = "force-dynamic"
 
-export async function PATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
+async function handlePATCH(request: NextRequest, context: { params: Promise<{ id: string }> }) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -101,6 +103,7 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
 
       return nextProperty
     })
+    propertyPublishedJourney(property, updated)
 
     const response = NextResponse.json({ property: serializeProperty(updated) })
     response.headers.set("Cache-Control", "no-store, max-age=0")
@@ -120,3 +123,5 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
     return NextResponse.json({ error: "Erro interno ao publicar o imóvel." }, { status: 500 })
   }
 }
+
+export const PATCH = withJourneyRoute("/api/properties/[id]/publish", handlePATCH)

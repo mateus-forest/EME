@@ -1,3 +1,5 @@
+import { startStudioJourney, failStudioJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 import type { Prisma } from "@prisma/client"
 
@@ -75,7 +77,7 @@ async function resolveAccessibleProperty(id: string, user: NonNullable<Awaited<R
   return { error: null, property }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -139,6 +141,7 @@ export async function POST(request: NextRequest) {
       description: property.description ?? "",
       status: propertyStatusLabel(property.status),
     })
+    startStudioJourney()
     const generated = await runWithAiOperationContext(
       {
         route: "/api/studio-ia/instagram",
@@ -290,6 +293,7 @@ export async function POST(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {
+    failStudioJourney()
     console.error("[api][studio-ia][instagram] generation failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
@@ -329,3 +333,5 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+export const POST = withJourneyRoute("/api/studio-ia/instagram", handlePOST)

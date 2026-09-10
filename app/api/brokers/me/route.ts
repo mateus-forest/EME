@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { compare, hash } from "bcryptjs"
 import { revalidatePath } from "next/cache"
 import { NextRequest, NextResponse } from "next/server"
@@ -49,7 +50,7 @@ function buildBrokerProfile(user: BrokerProfileUser | null) {
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
@@ -69,7 +70,7 @@ export async function GET() {
   return response
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUserWithSensitiveFields()
 
   if (error || !user) {
@@ -317,3 +318,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao atualizar a conta do corretor." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/me", handleGET)
+export const PATCH = withJourneyRoute("/api/brokers/me", handlePATCH)

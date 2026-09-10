@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -82,7 +83,7 @@ function serializeRental(rental: Awaited<ReturnType<typeof prisma.propertyRental
   }
 }
 
-export async function GET() {
+async function handleGET() {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
   try {
@@ -98,7 +99,7 @@ export async function GET() {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const auth = await requireBroker()
   if (auth instanceof NextResponse) return auth
   try {
@@ -168,3 +169,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível iniciar a locação." }, { status: isPrismaUnavailable(error) ? 503 : 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/properties/rentals", handleGET)
+export const POST = withJourneyRoute("/api/properties/rentals", handlePOST)

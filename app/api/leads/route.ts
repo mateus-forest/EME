@@ -1,3 +1,5 @@
+import { leadCreatedJourney } from "@/lib/journey/business"
+import { withJourneyRoute } from "@/lib/journey/server"
 import { CatalogOwnerType } from "@/lib/prisma-enums"
 
 import { NextRequest, NextResponse } from "next/server"
@@ -20,7 +22,7 @@ function catalogOwnerType(value: unknown) {
   return CatalogOwnerType.BROKER
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
     const propertyId = cleanText(body?.propertyId, 120)
@@ -128,6 +130,7 @@ export async function POST(request: NextRequest) {
       } }),
     ])
 
+    leadCreatedJourney(lead, source === "marketplace" ? "marketplace" : "catalog")
     notifyLeadRecipients({ property, brokerId, agencyId }).catch((error) => {
       console.error("[api][leads] notification failed after lead creation", {
         leadId: lead.id,
@@ -206,3 +209,5 @@ function leadErrorMessage(error: unknown) {
 
   return "Não foi possível criar o lead agora. Verifique nome, telefone e imóvel selecionado."
 }
+
+export const POST = withJourneyRoute("/api/leads", handlePOST)

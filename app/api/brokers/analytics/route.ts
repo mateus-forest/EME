@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { NextRequest, NextResponse } from "next/server"
 
 import { getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
@@ -15,7 +16,7 @@ function cleanText(value: string | null, maxLength: number) {
   return value?.trim().slice(0, maxLength) ?? ""
 }
 
-export async function GET(request: NextRequest) {
+async function handleGET(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -182,7 +183,7 @@ export async function GET(request: NextRequest) {
   }
 }
 
-export async function POST(request: NextRequest) {
+async function handlePOST(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -225,3 +226,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não foi possível registrar a busca." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/brokers/analytics", handleGET)
+export const POST = withJourneyRoute("/api/brokers/analytics", handlePOST)

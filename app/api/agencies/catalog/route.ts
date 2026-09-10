@@ -1,3 +1,4 @@
+import { withJourneyRoute } from "@/lib/journey/server"
 import { CatalogOwnerType, UserRole } from "@/lib/prisma-enums"
 import {
   NextRequest,
@@ -25,7 +26,7 @@ function serializeAgencyCatalog(agency: {
 
 export const dynamic = "force-dynamic"
 
-export async function GET() {
+async function handleGET() {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -44,7 +45,7 @@ export async function GET() {
   return response
 }
 
-export async function PATCH(request: NextRequest) {
+async function handlePATCH(request: NextRequest) {
   const { error, user } = await getAuthenticatedUser()
 
   if (error || !user) {
@@ -173,3 +174,6 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Erro interno ao atualizar catalogo da imobiliaria." }, { status: 500 })
   }
 }
+
+export const GET = withJourneyRoute("/api/agencies/catalog", handleGET)
+export const PATCH = withJourneyRoute("/api/agencies/catalog", handlePATCH)

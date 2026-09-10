@@ -1136,6 +1136,51 @@ model MarketplaceReview {
   @@index([status, createdAt])
 }
 
+// Pseudonymous, append-only journey facts. No ownership relation implies an actor.
+model JourneyEvent {
+  eventId       String   @id
+  eventName     String
+  schemaVersion Int     @default(1)
+  occurredAt    DateTime @db.Timestamptz(3)
+  receivedAt    DateTime @default(now()) @db.Timestamptz(3)
+  producer      String
+  userId        String?
+  anonymousId   String?
+  sessionId     String?
+  pathname      String
+  route         String
+  referrer      String?
+  device        String
+  module        String
+  step          String?
+  outcome       String?
+  requestId     String?
+  correlationId String?
+  brokerId      String?
+  propertyId    String?
+  catalogId     String?
+  errorCode     String?
+  metadata      Json     @default("{}")
+
+  @@index([eventName, occurredAt])
+  @@index([userId, occurredAt])
+  @@index([sessionId, occurredAt])
+  @@index([anonymousId, occurredAt])
+  @@index([module, occurredAt])
+  @@index([catalogId, occurredAt])
+  @@index([correlationId])
+}
+
+model JourneyIdentityLink {
+  anonymousId     String
+  sessionId       String
+  userId          String
+  authenticatedAt DateTime @db.Timestamptz(3)
+
+  @@id([anonymousId, sessionId, userId])
+  @@index([userId, authenticatedAt])
+}
+
 model MarketplaceRegionMedia {
   slug              String   @id
   displayName       String?
