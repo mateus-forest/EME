@@ -258,7 +258,7 @@ export function EmeMobileExperience({
         </div>
 
         <div data-mobile-footer-zone className={landingMobileStyles.footerZone}>
-        <LandingCosInfo className={landingMobileStyles.cosActions} />
+        <LandingCosInfo className={landingMobileStyles.cosActions} onOpenAccelerator={() => setAcceleratorOpen(true)} />
         {!selected && !authOpen ? (
           <div
             data-mobile-orbit-pagination

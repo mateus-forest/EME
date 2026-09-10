@@ -1,0 +1,19 @@
+.viewport {
+  display: block;
+  width: 100%;
+  min-height: 0;
+  max-height: min(60vh, calc(100vh - 14rem));
+  max-height: min(60dvh, calc(100dvh - 14rem));
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  touch-action: pan-y pinch-zoom;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-gutter: stable;
+}
+
+.html {
+  display: block;
+  width: 100%;
+  height: min(60vh, calc(100vh - 14rem));
+  height: min(60dvh, calc(100dvh - 14rem));
+}

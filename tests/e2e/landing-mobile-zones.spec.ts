@@ -3,6 +3,22 @@ import assert from "node:assert/strict"
 import { createMobileOrbitLayout, mobileOrbitPoint, mobilePlatformContactY } from "@/lib/eme-mobile-orbit-layout"
 
 const widths = [375, 390, 393, 430, 456]
+test("cards maiores mantêm separação visual durante a volta completa nas larguras mobile", () => {
+  for (const width of [375, 390, 393, 430]) {
+    const cardWidth = Math.round(Math.min(116, width * .27))
+    const layout = createMobileOrbitLayout(width - 32, 405.11, cardWidth, Math.round(cardWidth * 160 / 118), 222.76)
+    for (let angle = 0; angle < 360; angle += .2) {
+      const points = Array.from({ length: 6 }, (_, index) => mobileOrbitPoint(angle + 60 * index, layout))
+      for (let i = 0; i < points.length; i++) for (let j = i + 1; j < points.length; j++) {
+        // Minkowski sum of the rounded card silhouettes (20px radius), including depth scale.
+        const scale = points[i].scale + points[j].scale, radius = 20 * scale
+        const dx = Math.max(0, Math.abs(points[i].x - points[j].x) - (layout.cardWidth * scale / 2 - radius))
+        const dy = Math.max(0, Math.abs(points[i].y - points[j].y) - (layout.cardHeight * scale / 2 - radius))
+        assert(Math.hypot(dx, dy) >= radius, `${width}px: cards ${i}/${j} overlap at ${angle}`)
+      }
+    }
+  }
+})
 test("COS mantém abertura, Escape e retorno de foco no rodapé e desktop", async ({ page }) => {
   test.setTimeout(90_000)
   for (const width of [390, 1440]) {
@@ -25,7 +41,7 @@ test("COS mantém abertura, Escape e retorno de foco no rodapé e desktop", asyn
 for (const width of widths) {
   test(`exclusion zone e continuidade no ciclo completo: ${width}px`, () => {
     for (const height of [270, 360, 480]) {
-      const cardWidth = Math.min(100, Math.max(82, width * .22))
+      const cardWidth = Math.min(116, Math.max(100, width * .27))
       const layout = createMobileOrbitLayout(width - 32, height, cardWidth, cardWidth * 160 / 118)
       expect(layout.centerX).toBe((width - 32) / 2)
       expect(layout.centerY).toBeLessThan(height / 2)

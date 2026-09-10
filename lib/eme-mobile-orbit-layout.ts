@@ -29,7 +29,9 @@ export function mobileOrbitPoint(angle: number, layout: MobileOrbitLayout) {
   const nx = spline(point(-1)[0], point(0)[0], point(1)[0], point(2)[0], t)
   const ny = spline(point(-1)[1], point(0)[1], point(1)[1], point(2)[1], t)
   const depth = Math.max(0, Math.min(1, (ny + 1) / 2))
-  const scale = .7 + .3 * depth * depth * (3 - 2 * depth)
+  // Keep the front legible and reserve horizontal clearance at the sides.
+  // Growing the whole old ellipse would force the fit to shrink every element again.
+  const scale = .72 + (ny >= 0 ? .28 : .1) * ny * ny
   let x = nx * layout.radiusX
   let y = ny * layout.radiusY
   // Minkowski-expanded logo bounds: the entire scaled card must clear the logo,
@@ -43,20 +45,23 @@ export function mobileOrbitPoint(angle: number, layout: MobileOrbitLayout) {
 }
 
 export function createMobileOrbitLayout(width: number, height: number, cardWidth: number, cardHeight: number, platformY?: number): MobileOrbitLayout {
-  const layout = { radiusX: Math.min(172, width * .37), radiusY: Math.min(96, height * .23), logoWidth: Math.min(180, width * .43), cardWidth, cardHeight, fit: 1, centerX: width / 2, centerY: height * .42 }
+  const layout = { radiusX: Math.min(172, width * .33), radiusY: Math.min(138, height * .325), logoWidth: Math.min(210, width * .53), cardWidth, cardHeight, fit: 1, centerX: width / 2, centerY: height * .42 }
   let extentX = 0
-  let extentY = 0
+  let extentTop = 0
+  let extentBottom = 0
   // Reserve a little extra clearance between measured extrema and the stage.
   for (let angle = 0; angle < 360; angle += .5) {
     const p = mobileOrbitPoint(angle, layout)
     extentX = Math.max(extentX, Math.abs(p.x) + cardWidth * p.scale / 2)
-    extentY = Math.max(extentY, Math.abs(p.y) + cardHeight * p.scale / 2)
+    extentTop = Math.max(extentTop, -p.y + cardHeight * p.scale / 2)
+    extentBottom = Math.max(extentBottom, p.y + cardHeight * p.scale / 2)
   }
   const contactY = Math.max(12, Math.min(height - 12, platformY ?? height * .5))
   const logoHalfHeight = layout.logoWidth / 5
   layout.fit = Math.max(.01, Math.min(1, (width - 12) / (2 * extentX),
-    (contactY - 6) / (extentY + logoHalfHeight),
-    (height - 6 - contactY) / (extentY - logoHalfHeight)))
+    // The smaller rear cards do not need the height of the large front cards.
+    (contactY - 6) / (extentTop + logoHalfHeight),
+    (height - 6 - contactY) / (extentBottom - logoHalfHeight)))
   layout.centerY = contactY - logoHalfHeight * layout.fit
   return layout
 }

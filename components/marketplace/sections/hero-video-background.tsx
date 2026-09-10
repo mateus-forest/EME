@@ -1,7 +1,8 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { useInlineVideoPlayback } from '../use-inline-video-playback'
+import styles from './hero-video-background.module.css'
 
 const SOURCES = [
   '/marketplace/videos/hero-1.mp4',
@@ -13,7 +14,73 @@ const SOURCES = [
 
 const CROSSFADE_SECONDS = 2.4
 
+const subscribeMobile = (notify: () => void) => {
+  const query = window.matchMedia('(max-width: 767px)')
+  query.addEventListener('change', notify)
+  return () => query.removeEventListener('change', notify)
+}
+const readMobile = () => window.matchMedia('(max-width: 767px)').matches
+const subscribeReduced = (notify: () => void) => {
+  const query = window.matchMedia('(prefers-reduced-motion: reduce)')
+  query.addEventListener('change', notify)
+  return () => query.removeEventListener('change', notify)
+}
+const readReduced = () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+
+function HeroPoster() {
+  return <div aria-hidden="true" className="absolute inset-0 bg-[#0d1512]"><img src="/marketplace/images/hero-residence.png" alt="" className="h-full w-full object-cover" /></div>
+}
+
 export function HeroVideoBackground() {
+  const mobile = useSyncExternalStore(subscribeMobile, readMobile, () => null)
+  // Resolve the breakpoint before mounting media: only one playback strategy downloads clips.
+  if (mobile === null) return <HeroPoster />
+  return mobile ? <MobileHeroVideoBackground /> : <CrossfadeHeroVideoBackground />
+}
+
+function MobileHeroVideoBackground() {
+  const videoRef = useRef<HTMLVideoElement>(null)
+  const [source, setSource] = useState(0)
+  const [covered, setCovered] = useState(false)
+  const reduced = useSyncExternalStore(subscribeReduced, readReduced, () => false)
+  useInlineVideoPlayback(videoRef, !covered && !reduced, true)
+  const attachVideo = useCallback((video: HTMLVideoElement | null) => {
+    videoRef.current = video
+    if (video) {
+      video.muted = true
+      video.defaultMuted = true
+      video.playsInline = true
+      video.controls = false
+    }
+  }, [])
+  useEffect(() => {
+    const update = (event: Event) => setCovered(Boolean((event as CustomEvent<boolean>).detail))
+    window.addEventListener('eme:search-video', update)
+    return () => window.removeEventListener('eme:search-video', update)
+  }, [])
+  if (reduced) return <HeroPoster />
+  return <div aria-hidden="true" className="absolute inset-0 bg-[#0d1512]">
+    <video
+      ref={attachVideo}
+      data-mobile-hero-video
+      src={SOURCES[source]}
+      poster="/marketplace/images/hero-residence.png"
+      autoPlay
+      muted
+      playsInline
+      controls={false}
+      disablePictureInPicture
+      preload="auto"
+      // One persistent visible player. Only a real ended event advances the sequence;
+      // no hidden incoming player, crossfade timer, seeking or replay of an ended outgoing clip.
+      onEnded={() => setSource(index => (index + 1) % SOURCES.length)}
+      onContextMenu={event => event.preventDefault()}
+      className={`${styles.mobileVideo} absolute inset-0 h-full w-full object-cover`}
+    />
+  </div>
+}
+
+function CrossfadeHeroVideoBackground() {
   const [reduced, setReduced] = useState(false)
   const [isInViewport, setIsInViewport] = useState(true)
   const [covered, setCovered] = useState(false)

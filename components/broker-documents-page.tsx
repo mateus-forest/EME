@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { formatCurrencyBRLFromCents, parseCurrencyInputToCents } from "@/lib/currency"
 import { calculateFixedInstallmentCents, proposalHtmlToText } from "@/lib/proposal-template"
 import { formatPhone, parseDecimalInput } from "@/lib/structured-fields"
+import previewStyles from "./broker-document-preview.module.css"
 
 type BrokerDocument = {
   id: string
@@ -619,12 +620,12 @@ export function BrokerDocumentsPage() {
             </CardContent>
           </Card>
 
-          <Card className="min-w-0 max-w-full shrink-0 overflow-hidden rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
+          <Card data-testid="proposal-preview-card" className="min-w-0 max-w-full shrink-0 rounded-[var(--broker-radius-lg)] border-[var(--broker-border)] bg-[var(--broker-surface)] py-0 shadow-[var(--broker-shadow)]">
             <CardHeader className="border-b border-[var(--broker-border)] px-4 py-4">
               <CardTitle className="break-words text-lg text-[#050505] [overflow-wrap:anywhere]">{selectedDocument?.title ?? "Prévia da proposta"}</CardTitle>
               <p className="text-xs text-[#667085]">Revise o documento selecionado antes de baixar ou marcar como assinado.</p>
             </CardHeader>
-            <CardContent className="grid min-w-0 max-w-full gap-3 overflow-hidden p-4">
+            <CardContent className="grid min-w-0 max-w-full gap-3 p-4">
               {selectedDocument ? (
                 <>
                   {isVideoDocument(selectedDocument) ? (
@@ -635,13 +636,16 @@ export function BrokerDocumentsPage() {
                       className="block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-black object-contain"
                     />
                   ) : isHtmlDocument(selectedDocument.content) ? (
-                    <iframe
-                      title={selectedDocument.title}
-                      srcDoc={selectedDocument.content}
-                      className="pointer-events-none block h-[clamp(20rem,54vh,34rem)] max-h-[34rem] min-h-0 w-full max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white"
-                    />
+                    <div data-testid="proposal-preview-viewport" className={previewStyles.viewport}>
+                      <iframe
+                        data-testid="proposal-html-preview"
+                        title={selectedDocument.title}
+                        srcDoc={selectedDocument.content}
+                        className={`${previewStyles.html} max-w-full rounded-[var(--broker-radius-md)] border border-[var(--broker-border)] bg-white`}
+                      />
+                    </div>
                   ) : (
-                    <pre data-testid="proposal-preview" className="max-w-full whitespace-pre-wrap break-words rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A] [overflow-wrap:anywhere]">{selectedDocument.content}</pre>
+                    <pre data-testid="proposal-preview" tabIndex={0} role="region" aria-label="Conteúdo da proposta" className={`${previewStyles.viewport} max-w-full whitespace-pre-wrap break-words rounded-[1.25rem] border border-black/[0.06] bg-[#fbfbf8] p-4 text-sm leading-7 text-[#5F6B7A] [overflow-wrap:anywhere]`}>{selectedDocument.content}</pre>
                   )}
                   <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                     <Button type="button" variant="ghost" onClick={() => void openDocument(false)} className="h-10 rounded-xl border border-black/[0.06] bg-white/80 text-[#4B5563] hover:bg-white">

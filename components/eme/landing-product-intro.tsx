@@ -2,7 +2,7 @@
 
 import { useRef, useState } from "react"
 import Image from "next/image"
-import { MessageCircle, UserRound, FileText, CircleCheck, ChartNoAxesColumnIncreasing, Send, Funnel, Database, Sparkles, Target, Info, ChartNoAxesCombined } from "lucide-react"
+import { MessageCircle, UserRound, FileText, CircleCheck, ChartNoAxesColumnIncreasing, Send, Funnel, Database, Sparkles, Target, Info, ChartNoAxesCombined, ArrowUpRight } from "lucide-react"
 import { LandingModalShell } from "./landing-modal-shell"
 import styles from "./landing-product-intro.module.css"
 
@@ -33,13 +33,15 @@ export function LandingProductIntro({ showSupport = true, includeCos = true }: {
   </>
 }
 
-export function LandingCosInfo({ className = "" }: { className?: string }) {
+export function LandingCosInfo({ className = "", onOpenAccelerator }: { className?: string; onOpenAccelerator?: () => void }) {
   const [cosOpen, setCosOpen] = useState(false)
   const origin = useRef<HTMLButtonElement>(null)
   return <>
     <aside className={`${styles.secondary} ${className}`}>
       <button ref={origin} type="button" onClick={() => setCosOpen(true)}><MessageCircle size={15} aria-hidden /> Conheça o papel do COS</button>
-      <span>Acelerador EME · Em desenvolvimento</span>
+      {onOpenAccelerator ? <button type="button" className={styles.acceleratorCta} onClick={onOpenAccelerator} aria-label="Conheça o Acelerador EME">
+        <span><strong>Acelerador EME</strong><small>Em desenvolvimento</small></span><ArrowUpRight size={18} aria-hidden />
+      </button> : <span>Acelerador EME · Em desenvolvimento</span>}
     </aside>
     {cosOpen && <LandingModalShell label="COS, o assistente do EME" moduleId="cos-info" presentation className={styles.cosShell} originEl={origin.current} onClose={() => setCosOpen(false)}>
       <div className={styles.cosContent}>

@@ -3,7 +3,7 @@
 import { useEffect, useRef, type RefObject } from 'react'
 
 /** Retry transient Safari startup/lifecycle failures without load() or seeking. */
-export function useInlineVideoPlayback(ref: RefObject<HTMLVideoElement | null>, enabled: boolean) {
+export function useInlineVideoPlayback(ref: RefObject<HTMLVideoElement | null>, enabled: boolean, resumeWhenVisible = false) {
   const enabledRef = useRef(enabled)
   useEffect(() => {
     enabledRef.current = enabled
@@ -46,6 +46,13 @@ export function useInlineVideoPlayback(ref: RefObject<HTMLVideoElement | null>, 
     window.addEventListener('pageshow', resume)
     window.addEventListener('pagehide', hide)
     window.addEventListener('focus', resume)
+    // iOS can suspend a muted autoplay video when it leaves the visible area.
+    // A visibility entry requests recovery only; a stale entry never pauses playback.
+    const observer = resumeWhenVisible ? new IntersectionObserver(() => {
+      const rect = video.getBoundingClientRect()
+      if (rect.width && rect.height && rect.bottom > 0 && rect.top < window.innerHeight) resume()
+    }) : null
+    observer?.observe(video)
     resume()
     return () => {
       disposed = true
@@ -58,7 +65,8 @@ export function useInlineVideoPlayback(ref: RefObject<HTMLVideoElement | null>, 
       window.removeEventListener('pageshow', resume)
       window.removeEventListener('pagehide', hide)
       window.removeEventListener('focus', resume)
+      observer?.disconnect()
       if (enabled) video.pause()
     }
-  }, [enabled, ref])
+  }, [enabled, ref, resumeWhenVisible])
 }
