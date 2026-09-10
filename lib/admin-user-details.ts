@@ -1,15 +1,11 @@
 import "server-only"
 
-import { EME_PLANS, normalizeEmePlanKey } from "@/lib/eme-plans"
+import { billingPlanLabel } from "@/lib/billing-resolution"
+import { adminBillingPlanSelect, loadAdminUserBillings } from "@/lib/admin-billing"
 import { prisma } from "@/lib/prisma"
 import type { AdminUserDetails } from "@/lib/admin-user-details-contract"
 
 const DETAILS_BLOCK_TIMEOUT_MS = 5000
-
-function planLabel(value: string | null | undefined) {
-  const key = normalizeEmePlanKey(value)
-  return EME_PLANS[key]?.name ?? "Free"
-}
 
 async function safeDetailsBlock<T>(
   block: string,
@@ -63,6 +59,8 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
       plan: true,
       subscriptionStatus: true,
       stripeCustomerId: true,
+      stripeSubscriptionId: true,
+      ownedAgency: { select: { id: true } },
       createdAt: true,
       trustedDevices: {
         orderBy: { trustedAt: "desc" },
@@ -91,12 +89,14 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
           marketplaceSpecialties: true,
           marketplaceRegion: true,
           marketplaceAbout: true,
-          planAccount: { select: { planKey: true } },
+          planAccount: { select: adminBillingPlanSelect },
         },
       },
     },
   })
   if (!user) return null
+  const billingByUser = await loadAdminUserBillings([user])
+  const resolution = billingByUser.get(user.id)!
 
   const lastAccessAt = latestDate([
     user.broker?.aiLastInteractionAt,
@@ -123,12 +123,12 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
   if (!broker) {
     return {
       user: baseUser,
-      account: { plan: planLabel(user.plan), brokerStatus: null, creci: null, creciStatus: null, creditsBalance: 0, creditsUsed: 0 },
+      account: { plan: billingPlanLabel(resolution.contractedPlan), brokerStatus: null, creci: null, creciStatus: null, creditsBalance: 0, creditsUsed: 0 },
       devices,
       operation: { properties: 0, publishedProperties: 0, clients: 0, proposals: 0, contracts: 0, cosInteractions: 0, studioCampaigns: 0, studioAssets: 0, aiOperations: 0, aiCredits: 0, aiCostBrl: 0 },
       catalog: { slug: null, publishedProperties: 0, views: 0, contacts: 0, shares: 0, status: "Sem corretor vinculado" },
       marketplace: { publishedProperties: 0, views: 0, leads: 0, conversations: 0, profileStatus: "Sem corretor vinculado" },
-      billing: { subscriptionStatus: user.subscriptionStatus, stripeLinked: Boolean(user.stripeCustomerId), localSubscriptionStatus: null, recentPurchases: [] },
+      billing: { resolution, subscriptionStatus: resolution.presentationStatus, stripeLinked: Boolean(user.stripeCustomerId), localSubscriptionStatus: resolution.originalStatus, recentPurchases: [] },
       clients: [],
       unavailableBlocks: [],
     }
@@ -153,10 +153,7 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
     safeDetailsBlock("compartilhamentos do Catálogo", () => prisma.catalogEvent.count({ where: { brokerId: broker.id, eventType: { in: ["catalog_share", "share"] } } }), 0, unavailableBlocks),
     safeDetailsBlock("conversas do Marketplace", () => prisma.marketplaceConversation.count({ where: { brokerId: broker.id } }), 0, unavailableBlocks),
   ])
-  const [subscription, purchases] = await Promise.all([
-    safeDetailsBlock("assinatura", () => prisma.subscription.findFirst({ where: { ownerType: "BROKER", ownerId: broker.id } }), null, unavailableBlocks),
-    safeDetailsBlock("cobranças", () => prisma.extraPackagePurchase.findMany({ where: { brokerId: broker.id }, select: { id: true, packageKey: true, packageType: true, quantity: true, amountCents: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }), [], unavailableBlocks),
-  ])
+  const purchases = await safeDetailsBlock("cobranças", () => prisma.extraPackagePurchase.findMany({ where: { brokerId: broker.id }, select: { id: true, packageKey: true, packageType: true, quantity: true, amountCents: true, status: true, createdAt: true }, orderBy: { createdAt: "desc" }, take: 20 }), [], unavailableBlocks)
 
   const publishedProperties = properties.filter((property) => property.published)
   const marketplaceProperties = properties.filter((property) => property.marketplacePublished)
@@ -164,7 +161,7 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
   const details: AdminUserDetails = {
     user: baseUser,
     account: {
-      plan: planLabel(broker.planAccount?.planKey ?? user.plan),
+      plan: billingPlanLabel(resolution.contractedPlan),
       brokerStatus: broker.status,
       creci: [broker.creciUf, broker.creciOfficialRegistration || broker.creci].filter(Boolean).join(" / ") || null,
       creciStatus: broker.creciValidationStatus,
@@ -201,9 +198,10 @@ export async function getAdminUserDetails(userId: string): Promise<AdminUserDeta
       profileStatus: marketplaceConfigured ? "Configurado" : "Não configurado",
     },
     billing: {
-      subscriptionStatus: user.subscriptionStatus,
+      resolution,
+      subscriptionStatus: resolution.presentationStatus,
       stripeLinked: Boolean(user.stripeCustomerId),
-      localSubscriptionStatus: subscription?.status ?? null,
+      localSubscriptionStatus: resolution.originalStatus,
       recentPurchases: purchases.map((purchase) => ({
         id: purchase.id,
         type: purchase.packageType || purchase.packageKey,

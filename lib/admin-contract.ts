@@ -3,6 +3,7 @@ import { BrokerAccountStatus, SubscriptionStatus, UserRole } from "@/lib/prisma-
 
 import type { BillingPlan, BillingUserSubscriptionStatus } from "@/lib/billing-types"
 import { EME_PLANS, normalizeEmePlanKey } from "@/lib/eme-plans"
+import { billingPlanLabel, type BillingResolution } from "@/lib/billing-resolution"
 
 type AdminContractUser = {
   id: string
@@ -24,6 +25,7 @@ export type AdminUserRecord = {
   status: "Ativo" | "Inativo"
   createdAt: string
   plan: string
+  billing: BillingResolution
 }
 
 export type AdminAgencyRecord = {
@@ -131,7 +133,7 @@ function mapUserStatus(role: UserRole, brokerStatus?: BrokerAccountStatus, billi
   return "Ativo"
 }
 
-export function serializeAdminUser(user: AdminContractUser & { broker: Broker | null; ownedAgency: Agency | null }): AdminUserRecord {
+export function serializeAdminUser(user: AdminContractUser & { broker: Broker | null; ownedAgency: Agency | null }, billing: BillingResolution): AdminUserRecord {
   return {
     id: user.id,
     name: user.name,
@@ -140,7 +142,8 @@ export function serializeAdminUser(user: AdminContractUser & { broker: Broker | 
     whatsApp: user.phone ?? user.broker?.phone ?? user.ownedAgency?.phone ?? "-",
     status: mapUserStatus(user.role, user.broker?.status, user.subscriptionStatus),
     createdAt: formatDate(user.createdAt),
-    plan: formatPlan(user.plan, user.role),
+    plan: billingPlanLabel(billing.contractedPlan),
+    billing,
   }
 }
 

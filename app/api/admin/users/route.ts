@@ -3,6 +3,7 @@ import { UserRole } from "@/lib/prisma-enums"
 import { NextResponse } from "next/server"
 
 import { serializeAdminUser } from "@/lib/admin-contract"
+import { adminBillingPlanSelect, loadAdminUserBillings } from "@/lib/admin-billing"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma } from "@/lib/prisma"
 
@@ -24,7 +25,7 @@ export async function GET() {
         },
       },
       include: {
-        broker: true,
+        broker: { include: { planAccount: { select: adminBillingPlanSelect } } },
         ownedAgency: true,
       },
       orderBy: {
@@ -32,8 +33,9 @@ export async function GET() {
       },
     })
 
+    const billingByUser = await loadAdminUserBillings(users)
     return NextResponse.json({
-      users: users.map(serializeAdminUser),
+      users: users.map((user) => serializeAdminUser(user, billingByUser.get(user.id)!)),
     })
   } catch (caughtError) {
     console.error("[api][admin][users] list failed", {

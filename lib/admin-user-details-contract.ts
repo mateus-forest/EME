@@ -1,3 +1,5 @@
+import type { BillingResolution } from "@/lib/billing-resolution"
+
 export type AdminUserClientDetail = {
   id: string
   name: string | null
@@ -27,6 +29,7 @@ export type AdminUserDetails = {
   catalog: { slug: string | null; publishedProperties: number; views: number; contacts: number; shares: number; status: string }
   marketplace: { publishedProperties: number; views: number; leads: number; conversations: number; profileStatus: string }
   billing: {
+    resolution: BillingResolution
     subscriptionStatus: string
     stripeLinked: boolean
     localSubscriptionStatus: string | null

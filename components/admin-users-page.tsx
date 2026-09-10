@@ -24,7 +24,7 @@ import type { AdminUserDetails } from "@/lib/admin-user-details-contract"
 
 const typeFilters = ["Todos", "Corretor", "Operação", "Admin"] as const
 const statusFilters = ["Todos", "Ativo", "Inativo"] as const
-const planFilters = ["Todos", "Free", "Pro", "Scale", "Admin"] as const
+const planFilters = ["Todos", "Free", "Pro", "Scale", "Pendente de conciliação"] as const
 
 export function AdminUsersPage() {
   const searchParams = useSearchParams()
@@ -58,7 +58,9 @@ export function AdminUsersPage() {
         user.email.toLowerCase().includes(normalizedSearch)
       const matchesType = typeFilter === "Todos" || user.type === typeFilter
       const matchesStatus = statusFilter === "Todos" || user.status === statusFilter
-      const matchesPlan = planFilter === "Todos" || user.plan === planFilter
+      const matchesPlan = planFilter === "Todos" || (planFilter === "Pendente de conciliação"
+        ? user.billing.presentationStatus === planFilter
+        : user.plan === planFilter)
       return matchesSearch && matchesType && matchesStatus && matchesPlan
     })
   }, [planFilter, search, statusFilter, typeFilter, users])
@@ -127,7 +129,7 @@ export function AdminUsersPage() {
 
   async function handleSave(user: AdminUserRecord) {
     try {
-      const updated = await updateAdminUser(user.id, user)
+      const updated = await updateAdminUser(user.id, { name: user.name, email: user.email, whatsApp: user.whatsApp })
       setUsers(users.map((current) => (current.id === user.id ? updated : current)))
       setEditingUser(null)
       setSelectedUser(updated)
@@ -203,7 +205,14 @@ export function AdminUsersPage() {
               <AdminBadge key={`${user.id}-status`} tone={user.status === "Ativo" ? "success" : "warning"}>
                 {user.status}
               </AdminBadge>,
-              <span key={`${user.id}-plan`} className="text-[#111827]">{user.plan}</span>,
+              <div key={`${user.id}-plan`} className="text-[#111827]" title={user.billing.conflicts.map((conflict) => conflict.message).join(" ") || user.billing.limitations.join(" ")}>
+                <p>{user.plan}</p>
+                {user.billing.presentationStatus !== user.plan ? (
+                  <p className={`mt-1 text-xs ${user.billing.presentationStatus === "Pendente de conciliação" ? "text-amber-700" : "text-[#6B7280]"}`}>
+                    {user.billing.presentationStatus}
+                  </p>
+                ) : null}
+              </div>,
               <span key={`${user.id}-mail`} className="max-w-[260px] break-all text-[#111827]">{user.email}</span>,
               <span key={`${user.id}-created`}>{user.createdAt}</span>,
               <div key={`${user.id}-actions`} className="flex flex-wrap justify-end gap-2">

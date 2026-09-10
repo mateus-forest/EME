@@ -9,12 +9,13 @@ import {
   type BillingUserSubscriptionStatus,
 } from "@/lib/billing-types"
 import { serializeAdminUser } from "@/lib/admin-contract"
+import { adminBillingPlanSelect, loadAdminUserBillings } from "@/lib/admin-billing"
 import { getAdminUserDetails } from "@/lib/admin-user-details"
 import { ensureRole, getAuthenticatedUser, isPrismaUnavailable } from "@/lib/auth-route"
 import { prisma, type PrismaTransaction } from "@/lib/prisma"
 
 const userInclude = {
-  broker: true,
+  broker: { include: { planAccount: { select: adminBillingPlanSelect } } },
   ownedAgency: true,
 } as const
 
@@ -185,7 +186,8 @@ export async function PATCH(request: NextRequest, context: { params: Promise<{ i
       return NextResponse.json({ error: "Usuário não encontrado após atualização." }, { status: 404 })
     }
 
-    return NextResponse.json({ user: serializeAdminUser(updated) })
+    const billingByUser = await loadAdminUserBillings([updated])
+    return NextResponse.json({ user: serializeAdminUser(updated, billingByUser.get(updated.id)!) })
   } catch (caughtError) {
     console.error("[api][admin][users][id] update failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
@@ -262,9 +264,10 @@ export async function DELETE(_: NextRequest, context: { params: Promise<{ id: st
         })
       })
 
+      const billingByUser = await loadAdminUserBillings([updated])
       return NextResponse.json({
         deleted: false,
-        user: serializeAdminUser(updated),
+        user: serializeAdminUser(updated, billingByUser.get(updated.id)!),
         message: "Usuário possui relações importantes e foi inativado.",
       })
     }
