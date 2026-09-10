@@ -6,10 +6,10 @@ Implementação de coleta; o Admin e as regras de negócio permanecem com o comp
 
 1. Aplicar `prisma/migrations/20260910230000_journey_analytics/migration.sql` pelo processo normal de deploy, primeiro em homologação. A migração cria somente `JourneyEvent`, `JourneyIdentityLink` e índices; não altera tabelas de billing ou permissões.
 2. Gerar o cliente Prisma e publicar o código.
-3. Definir `JOURNEY_ANALYTICS_ENABLED=true` no servidor. A gravação fica **desligada por padrão**, inclusive no ambiente local usado nesta entrega. `.env.local` não foi alterado.
+3. Definir `JOURNEY_ANALYTICS_ENABLED=true` no servidor. A gravação fica **desligada por padrão**; cada ambiente precisa dessa configuração própria.
 4. Exercitar jornadas de contas de teste e verificar os fatos e vínculos. Desativar a variável interrompe as novas gravações sem remover tabelas ou dados de negócio.
 
-A migração **não foi aplicada ao banco real** nesta entrega. A geração do cliente e a validação do schema não aplicam migrações. Nenhum pagamento ou cadastro real foi executado para testar esta camada.
+A ativação local de 10/09/2026 aplicou a migração ao banco configurado e definiu a variável no `.env.local` (ignorado pelo Git). Isso não configura a variável de um deploy remoto. A geração do cliente e a validação do schema, isoladamente, não aplicam migrações.
 
 ## Contrato e fontes
 
@@ -51,7 +51,7 @@ Se o webhook não consegue resolver o vínculo/plano local, registra `STRIPE_BIL
 - A interceptação de `fetch` acrescenta IDs de requisição/correlação e pathname saneado somente em APIs da mesma origem. Não lê corpos de requisição para registrar dados. A própria coleta não entra na interceptação.
 - `/api/journey/events`: JSON de até 32 KiB, limite de 20 fatos, checagem de origem e limite por sessão em memória. Só aceita eventos de browser; não aceita sucesso de negócio forjado. `userId` enviado pelo cliente é ignorado. JWT verificado fornece ator apenas se cookies e sessão do evento coincidirem, evitando atribuir lotes antigos a uma conta recém-conectada.
 - `withJourneyRoute` preserva o resultado e exceções do handler. A autenticação existente preenche o ator do contexto. A inspeção de respostas e a escrita acontecem após a resposta com `after`. Não há chamada de analytics aguardada dentro de transação de negócio.
-- Persistência usa pool separado, máximo de uma conexão, timeout de conexão de 700 ms, statement de 1,5 s, query de 2 s e limite de quatro gravações concorrentes/enfileiradas por processo. Falhas e excesso de carga descartam coleta; aviso operacional agregado não contém payload. Não há garantia de entrega sem perda/outbox transacional.
+- Persistência usa pool separado, máximo de uma conexão, timeout de conexão de 3 s, ociosidade de 30 s, statement de 1,5 s, query de 2 s e limite de quatro gravações concorrentes/enfileiradas por processo. A conexão ao banco remoto pode ultrapassar os 700 ms inicialmente configurados; ampliar esse limite e reutilizar a conexão evita descarte prematuro sem colocar a escrita no caminho da resposta. Falhas e excesso de carga descartam coleta; aviso operacional agregado distingue timeout, capacidade, conexão e armazenamento, sem expor mensagem original ou payload. Não há garantia de entrega sem perda/outbox transacional.
 - `JourneyIdentityLink` guarda `(anonymousId, sessionId, userId, authenticatedAt)` somente a partir de `signup_completed`/`login_completed`, na mesma instrução SQL que insere o fato. Logout gira a sessão. Não reescreve eventos passados nem une toda a vida de um dispositivo a uma conta.
 - Em dispositivo compartilhado, uma sessão com mais de um usuário autenticado não deve ter seus fatos anônimos atribuídos automaticamente a um deles. Eventos com `userId` explícito continuam válidos. Usar apenas vínculos de sessão sem ambiguidade ao reconstruir o trecho anterior ao login.
 - `brokerId`, `propertyId` e `catalogId` são contexto do recurso. **Nunca usar o dono do catálogo/imóvel como usuário ativo por causa de visita pública.** Atividade de produto considera ator autenticado e rotas/ações do portal; tráfego público é métrica separada.
@@ -91,7 +91,7 @@ Para formatar timestamps, usar `Intl.DateTimeFormat('pt-BR', { timeZone: ADMIN_A
 
 ## Cobertura e limites restantes
 
-- Aplicação da migração, ativação e verificação com tráfego de homologação/deploy ainda necessárias. Não há dados retroativos na nova tabela.
+- O banco configurado e o servidor local foram ativados; cada deploy remoto ainda exige configuração e smoke próprios. Não há dados retroativos na nova tabela.
 - Captura HTTP central cobre as famílias auth, properties/uploads, brokers, agencies, leads, studio-ia, stripe, assistant, cos-launch e conversas públicas do Marketplace. Exceções não tratadas de outras rotas Node/render entram pelo hook global; respostas de erro **tratadas** em famílias ainda não envolvidas precisam aderir ao wrapper.
 - PDF final de template está coberto. Exportações de contrato realizadas exclusivamente no browser e simples download de documento já anexado não são contados como geração confirmada no servidor.
 - Mensagens externas WhatsApp, assistentes legados fora do COS principal/Launch, jobs fora de contexto HTTP e acesso cross-device ainda exigem instrumentação específica. Nunca serão inferidos a partir do dono do recurso. Validações dos formulários financeiros do Launch têm código de erro na coleta, preservando a resposta existente da interface.
@@ -101,6 +101,17 @@ Para formatar timestamps, usar `Intl.DateTimeFormat('pt-BR', { timeZone: ADMIN_A
 - Admin novo, consultas agregadas, gráficos e política de conversão por tentativa ficam para a próxima etapa, usando estas definições.
 
 ## Validação
+
+### Smoke de ativação — 10/09/2026
+
+- `prisma migrate deploy` encontrou somente `20260910230000_journey_analytics` pendente. Depois da aplicação, o checksum no histórico correspondeu ao arquivo; as duas chaves primárias e os oito índices secundários estavam válidos/prontos. Os três campos temporais são `TIMESTAMPTZ(3)`. As contagens de registros existentes permaneceram iguais imediatamente após a migração.
+- Após o ajuste do pool, uma jornada pública real produziu dez eventos de browser e todos foram encontrados uma única vez no banco: quatro `page_view` (landing, abertura de cadastro, Marketplace e catálogo), `landing_view`, `signup_started`, `signup_failed`, `marketplace_view`, `catalog_view` e um erro frontend controlado. Todos mantiveram a mesma sessão/identidade anônima e `userId=null`.
+- Uma mensagem de ajuda enviada na interface autenticada do COS teve resposta normal e `cos_message_sent` persistido pelo servidor, com ator e correlação. As páginas de Studio e plano foram exercitadas sem iniciar geração ou pagamento. Requisições sem autenticação aos endpoints do Studio/checkout preservaram o 401 e persistiram os erros de cada módulo.
+- A associação após login ainda depende de um novo login confirmado: na última consulta do smoke, não havia `login_completed` nem linha em `JourneyIdentityLink`. A sessão já aberta permitiu validar o ator no COS/Studio/plano, mas não comprova a criação do vínculo. Não foi criado vínculo manual nem alterado evento histórico para suprir essa ausência.
+- Reenviar seis cópias do mesmo evento real, distribuídas em três requisições, manteve uma única linha. O coletor respondeu 202 em 50–92 ms nesse teste local. Bloquear somente o coletor no navegador preservou a navegação (200) e a resposta real de validação do cadastro (400).
+- Não foram criados usuários, imóveis, leads ou pagamentos para o smoke. A conversa/mensagem de ajuda gerada pelo fluxo normal do COS foi preservada. As tabelas de analytics contêm os acessos e erros deliberados desta validação; eles não representam incidentes de usuários finais.
+- Estas medições são um smoke local, com compilação de desenvolvimento e banco remoto; não constituem benchmark de produção. Cadastro concluído, geração paga e pagamento concluído não foram provocados no ambiente real. Seus pontos de confirmação continuam cobertos pelos testes automatizados.
+- Regressão após o ajuste: 118 testes de domínio/analytics/billing e quatro testes de navegador aprovados; TypeScript e lint dos arquivos de código alterados aprovados. O teste novo verifica descarte por capacidade, recuperação da fila e ausência de credenciais nos avisos de timeout.
 
 `tests/journey-analytics.test.mjs` exercita contrato, privacidade, contexto concorrente, confirmação de autenticação, falha de coleta, publicação, deduplicação, collector, webhook real com dependências simuladas e persistência de prévia/vídeo do Studio. `tests/e2e/journey-analytics.spec.ts` usa Chromium em desktop/mobile, APIs simuladas e módulos reais do browser. Não usa Stripe/banco reais.
 

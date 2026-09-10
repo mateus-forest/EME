@@ -10,7 +10,9 @@ export async function persistJourneyEvents(events: readonly JourneyEvent[]): Pro
   try {
     if (!process.env.DATABASE_URL) return
     if (!state.journeyPool) {
-      state.journeyPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 700, idleTimeoutMillis: 5000, statement_timeout: 1500, query_timeout: 2000, allowExitOnIdle: true })
+      // Remote TLS/pooler connections can exceed 700 ms. This wait is after the response;
+      // retain one connection briefly to avoid repeating the handshake between page views.
+      state.journeyPool = new Pool({ connectionString: process.env.DATABASE_URL, max: 1, connectionTimeoutMillis: 3000, idleTimeoutMillis: 30000, statement_timeout: 1500, query_timeout: 2000, allowExitOnIdle: true })
       state.journeyPool.on("error", () => warnDrop("connection"))
     }
     await state.journeyPool.query({ text: `WITH inserted AS (
@@ -22,7 +24,11 @@ export async function persistJourneyEvents(events: readonly JourneyEvent[]): Pro
       WHERE "eventName" IN ('signup_completed','login_completed') AND "userId" IS NOT NULL AND "anonymousId" IS NOT NULL AND "sessionId" IS NOT NULL
       GROUP BY "anonymousId","sessionId","userId"
       ON CONFLICT ("anonymousId","sessionId","userId") DO UPDATE SET "authenticatedAt"=LEAST("JourneyIdentityLink"."authenticatedAt",EXCLUDED."authenticatedAt")`, values: [JSON.stringify(events.slice(0, 1000))] })
-  } catch { warnDrop("storage") } finally { state.journeyWrites = Math.max(0, (state.journeyWrites ?? 1) - 1) }
+  } catch (error) {
+    const diagnostic = error as { code?: string; message?: string } | null
+    // Only a coarse category is logged; never log the original message or connection URL.
+    warnDrop(diagnostic?.code === "57014" || /timeout|timed out/i.test(diagnostic?.message ?? "") ? "timeout" : "storage")
+  } finally { state.journeyWrites = Math.max(0, (state.journeyWrites ?? 1) - 1) }
 }
 function warnDrop(reason: string) {
   if (Date.now() - (state.journeyWarningAt ?? 0) > 60_000) {

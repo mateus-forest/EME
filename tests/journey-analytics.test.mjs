@@ -220,6 +220,43 @@ test("persistence is parameterized, idempotent, links only authenticated session
   } finally { globalThis.console.warn = warn; delete globalThis.journeyPool; if (originalUrl === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = originalUrl }
 })
 
+test("slow analytics storage stays bounded, recovers capacity and redacts timeout diagnostics", async () => {
+  const originalUrl = process.env.DATABASE_URL
+  const warn = globalThis.console.warn
+  const warnings = [], pending = []
+  let calls = 0
+  process.env.DATABASE_URL = "postgresql://fixture.invalid/no-network"
+  globalThis.journeyWarningAt = 0
+  globalThis.journeyWrites = 0
+  globalThis.journeyPool = { query: () => { calls++; return new Promise((resolve, reject) => pending.push({ resolve, reject })) } }
+  globalThis.console.warn = (...args) => warnings.push(args)
+  const { persistJourneyEvents } = load("lib/journey/persistence.ts", { pg: {} })
+  const batch = [contract.normalizeJourneyEvent(event(), "browser")]
+  try {
+    const writes = Array.from({ length: 4 }, () => persistJourneyEvents(batch))
+    await persistJourneyEvents(batch)
+    assert.equal(calls, 4)
+    assert.equal(globalThis.journeyWrites, 4)
+    assert.equal(warnings[0][1].reason, "capacity")
+    globalThis.journeyWarningAt = 0
+    pending.shift().reject(Error("connection timeout: postgresql://user:private-password@private-host/db"))
+    for (const job of pending.splice(0)) job.resolve()
+    await Promise.all(writes)
+    assert.equal(globalThis.journeyWrites, 0)
+    assert.equal(warnings[1][1].reason, "timeout")
+    assert.doesNotMatch(JSON.stringify(warnings), /postgresql|private-password|private-host/)
+    const recovered = persistJourneyEvents(batch)
+    pending.shift().resolve()
+    await recovered
+    assert.equal(calls, 5)
+    assert.equal(globalThis.journeyWrites, 0)
+  } finally {
+    globalThis.console.warn = warn
+    delete globalThis.journeyPool; delete globalThis.journeyWrites; delete globalThis.journeyWarningAt
+    if (originalUrl === undefined) delete process.env.DATABASE_URL; else process.env.DATABASE_URL = originalUrl
+  }
+})
+
 class MockNextRequest extends Request {
   get nextUrl() { return new globalThis.URL(this.url) }
   get cookies() { return { get: key => { const value = (this.headers.get("cookie") ?? "").split(";").map(v => v.trim()).find(v => v.startsWith(`${key}=`))?.slice(key.length + 1); return value ? { value } : undefined } } }
