@@ -201,7 +201,7 @@ export function EmeLandingScene({
           authOpen={authMode != null}
           className="absolute bottom-10 left-12 z-[65] hidden sm:block"
         />
-        <LandingProductIntro />
+        <LandingProductIntro onOpenAccelerator={() => setAcceleratorOpen(true)} />
 
         <div
           className="absolute inset-0 flex items-center justify-center -translate-y-[72px] pt-4 transition-opacity duration-700 ease-out sm:pt-2"
