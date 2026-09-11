@@ -22,6 +22,7 @@ import { Input } from "@/components/ui/input"
 import { StructuredInput } from "@/components/ui/structured-input"
 import type { StructuredInputKind } from "@/lib/structured-fields"
 import { clearLegacyAuthState, getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { resolveAuthRedirect } from "@/lib/auth-redirect"
 import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 
 const easeOut = [0.16, 1, 0.3, 1] as const
@@ -163,12 +164,9 @@ function AuthPanel({ mode }: { mode: AuthMode }) {
 
       const next =
         typeof window !== "undefined"
-          ? new URLSearchParams(window.location.search).get("next")
+          ? new URLSearchParams(window.location.search).getAll("next")
           : null
-      const fallbackRoute = getDefaultRouteByRole(data.user.role)
-      const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
-
-      router.push(targetRoute)
+      router.push(resolveAuthRedirect(next, data.user.role))
     } finally {
       setIsSubmitting(false)
     }

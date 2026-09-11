@@ -35,11 +35,7 @@ const LEGACY_AUTH_KEYS = [
 
 let currentUserRequest: Promise<AuthenticatedUser | null> | null = null
 
-export function getDefaultRouteByRole(role: AuthRole) {
-  if (role === "ADMIN") return "/admin"
-  if (role === "AGENCY") return "/"
-  return "/corretor"
-}
+export { getDefaultRouteByRole } from "./auth-redirect"
 
 export function clearLegacyAuthState() {
   if (typeof window === "undefined") return

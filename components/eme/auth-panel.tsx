@@ -9,6 +9,7 @@ import { Fingerprint, KeyRound, LockKeyhole, X } from "lucide-react"
 import { usePremiumLogin } from "@/components/use-premium-login"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
 import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { resolveAuthRedirect } from "@/lib/auth-redirect"
 import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 import { cn } from "@/lib/utils"
 
@@ -58,11 +59,7 @@ export function AuthPanel({
     submitPin,
     submitBiometric,
   } = usePremiumLogin((user: AuthenticatedUser) => {
-    const next = searchParams.get("next")
-    const fallbackRoute = getDefaultRouteByRole(user.role)
-    const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
-
-    router.push(targetRoute)
+    router.push(resolveAuthRedirect(searchParams.getAll("next"), user.role))
   })
 
   useEffect(() => {
