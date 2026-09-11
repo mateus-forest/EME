@@ -1,20 +1,16 @@
 "use client"
-import { signupJourneyStarted, signupJourneyInvalid, signupJourneyProgress } from "@/lib/journey/browser"
+import { signupJourneyInvalid, signupJourneyProgress } from "@/lib/journey/browser"
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type InputHTMLAttributes, type ReactNode } from "react"
-import { useRouter, useSearchParams } from "next/navigation"
+import { useEffect, useMemo, useRef, type InputHTMLAttributes, type ReactNode } from "react"
 import { AnimatePresence, motion } from "motion/react"
 import { Fingerprint, KeyRound, LockKeyhole, X } from "lucide-react"
 
-import { usePremiumLogin } from "@/components/use-premium-login"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
-import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
-import { resolveAuthRedirect } from "@/lib/auth-redirect"
 import { CRECI_UF_OPTIONS } from "@/lib/creci-validation"
 import { cn } from "@/lib/utils"
+import { useAuthForm, type AuthMode } from "./use-auth-form"
 
-export type AuthMode = "login" | "signup"
-type LoginMethod = "password" | "pin"
+export type { AuthMode } from "./use-auth-form"
 
 export function AuthPanel({
   mode,
@@ -25,29 +21,33 @@ export function AuthPanel({
   onModeChange: (m: AuthMode) => void
   onClose: () => void
 }) {
-  const router = useRouter()
-  const searchParams = useSearchParams()
-  useEffect(() => { if (mode === "signup") signupJourneyStarted("landing_modal") }, [mode])
-  const isLogin = mode === "login"
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [name, setName] = useState("")
-  const [signupEmail, setSignupEmail] = useState("")
-  const [creci, setCreci] = useState("")
-  const [creciUf, setCreciUf] = useState("")
-  const [signupPassword, setSignupPassword] = useState("")
-  const [confirmPassword, setConfirmPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loginMethod, setLoginMethod] = useState<LoginMethod>("password")
   const closeButtonRef = useRef<HTMLButtonElement>(null)
   const sheetTransition = { duration: 0.28, ease: [0.22, 1, 0.36, 1] } as const
 
   const {
+    isLogin,
+    isSubmitting,
+    name,
+    setName,
+    signupEmail,
+    setSignupEmail,
+    creci,
+    setCreci,
+    creciUf,
+    setCreciUf,
+    signupPassword,
+    setSignupPassword,
+    confirmPassword,
+    setConfirmPassword,
+    error,
+    loginMethod,
+    setLoginMethod,
     trustedDevice,
     email,
     password,
     pin,
-    error: loginError,
-    isSubmitting: isLoginSubmitting,
+    loginError,
+    isLoginSubmitting,
     isCheckingDevice,
     pinAvailable,
     biometricAvailable,
@@ -55,12 +55,9 @@ export function AuthPanel({
     setEmail,
     setPassword,
     setPin,
-    submitPassword,
-    submitPin,
     submitBiometric,
-  } = usePremiumLogin((user: AuthenticatedUser) => {
-    router.push(resolveAuthRedirect(searchParams.getAll("next"), user.role))
-  })
+    handleSubmit,
+  } = useAuthForm(mode)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -90,10 +87,6 @@ export function AuthPanel({
     }
   }, [])
 
-  useEffect(() => {
-    setError("")
-  }, [mode, loginMethod])
-
   const helperText = useMemo(() => {
     if (!isLogin) {
       return "Crie sua conta gratuitamente e descubra uma nova forma de operar o mercado imobiliário."
@@ -101,71 +94,6 @@ export function AuthPanel({
 
     return "Continue para acessar o seu Sistema Operacional."
   }, [isLogin])
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault()
-    setError("")
-
-    if (isLogin) {
-      try {
-        if (loginMethod === "pin") {
-          await submitPin()
-        } else {
-          await submitPassword()
-        }
-      } catch (caughtError) {
-        setError(caughtError instanceof Error ? caughtError.message : "Não foi possível entrar agora.")
-      }
-
-      return
-    }
-
-    const trimmedName = name.trim()
-    const normalizedEmail = signupEmail.trim().toLowerCase()
-
-    if (!trimmedName || !normalizedEmail || !signupPassword || !creciUf || !creci.trim()) {
-      signupJourneyInvalid("REQUIRED_FIELDS")
-      setError("Nome, email, senha, UF e CRECI são obrigatórios.")
-      return
-    }
-
-    if (signupPassword !== confirmPassword) {
-      signupJourneyInvalid("PASSWORD_MISMATCH")
-      setError("As senhas não coincidem.")
-      return
-    }
-
-    setIsSubmitting(true)
-
-    try {
-      const response = await fetch("/api/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({
-          role: "BROKER",
-          name: trimmedName,
-          email: normalizedEmail,
-          creci: creci.trim(),
-          creciUf,
-          password: signupPassword,
-        }),
-      })
-
-      const data = (await response.json().catch(() => null)) as { user: AuthenticatedUser } | { error?: string } | null
-
-      if (!response.ok || !data || !("user" in data)) {
-        setError(data && "error" in data && data.error ? data.error : "Não foi possível criar sua conta agora.")
-        return
-      }
-
-      router.push(getDefaultRouteByRole(data.user.role))
-    } finally {
-      setIsSubmitting(false)
-    }
-  }
 
   return (
     <div className="eme-auth-modal-shell pointer-events-none fixed inset-0 z-[90]">
