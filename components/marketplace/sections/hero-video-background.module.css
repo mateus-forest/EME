@@ -1,6 +1,18 @@
-/* Decorative media has no manual player UI, including the iOS startup affordance. */
-.mobileVideo::-webkit-media-controls,
-.mobileVideo::-webkit-media-controls-start-playback-button {
+.background {
+  isolation: isolate;
+  overflow: hidden;
+}
+
+.video {
+  pointer-events: none;
+  will-change: opacity;
+}
+
+/* Decorative media never offers a second, native playback UI. */
+.video::-webkit-media-controls,
+.video::-webkit-media-controls-panel,
+.video::-webkit-media-controls-enclosure,
+.video::-webkit-media-controls-start-playback-button {
   display: none !important;
   -webkit-appearance: none;
 }

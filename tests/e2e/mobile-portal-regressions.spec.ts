@@ -1,4 +1,4 @@
-import { expect, test, webkit, type Page } from "@playwright/test"
+import { expect, test, type Page } from "@playwright/test"
 import { buildProposalHtml } from "@/lib/proposal-template"
 
 test.setTimeout(90_000)
@@ -29,71 +29,6 @@ for (const width of [375, 390, 393, 430]) test(`mobile landing restores scale an
   await expect(screen).toHaveCount(0)
   await expect(accelerator).toBeVisible()
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true)
-})
-
-type MediaAudit = { ended: Array<{ src: string; time: number; duration: number }>; first?: HTMLVideoElement }
-async function auditMedia(page: Page) {
-  await publicSession(page)
-  await page.addInitScript(() => {
-    const audit: MediaAudit = { ended: [] }
-    Object.assign(window, { heroAudit: audit })
-    document.addEventListener("playing", event => {
-      const video = event.target
-      if (video instanceof HTMLVideoElement && video.hasAttribute("data-mobile-hero-video")) audit.first ??= video
-    }, true)
-    document.addEventListener("ended", event => {
-      const video = event.target
-      if (video instanceof HTMLVideoElement && video.hasAttribute("data-mobile-hero-video")) audit.ended.push({ src: video.getAttribute("src")!, time: video.currentTime, duration: video.duration })
-    }, true)
-  })
-}
-
-for (const engine of ["chromium", "webkit"] as const) test(`mobile hero completes every original clip in one player and recovers route/lifecycle (${engine})`, async ({ browser, baseURL }) => {
-  const runtime = engine === "webkit" ? await webkit.launch() : browser
-  const context = await runtime.newContext({ baseURL, viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true })
-  try {
-    const page = await context.newPage()
-    await auditMedia(page)
-    await page.goto("/imoveis")
-    const video = page.locator("[data-mobile-hero-video]")
-    await expect(page.locator("[data-marketplace-hero] video")).toHaveCount(1)
-    await expect.poll(() => video.evaluate(v => (v as HTMLVideoElement).currentTime)).toBeGreaterThan(.2)
-    expect(await video.evaluate(v => { const x = v as HTMLVideoElement; return { autoPlay: x.autoplay, muted: x.muted, defaultMuted: x.defaultMuted, inline: x.playsInline, controls: x.controls } })).toEqual({ autoPlay: true, muted: true, defaultMuted: true, inline: true, controls: false })
-    // Real-time playback: no seek, simulated ended event or increased playbackRate.
-    await expect.poll(() => page.evaluate(() => (window as unknown as { heroAudit: MediaAudit }).heroAudit.ended.length), { timeout: 55_000 }).toBeGreaterThanOrEqual(5)
-    const ended = await page.evaluate(() => (window as unknown as { heroAudit: MediaAudit }).heroAudit.ended.slice(0, 5))
-    expect(ended.map(item => item.src)).toEqual([1, 2, 3, 4, 5].map(i => `/marketplace/videos/hero-${i}.mp4`))
-    for (const clip of ended) expect(clip.time).toBeCloseTo(clip.duration, 1)
-    expect(await video.evaluate(v => v === (window as unknown as { heroAudit: MediaAudit }).heroAudit.first)).toBe(true)
-    await page.evaluate(() => { window.dispatchEvent(new PageTransitionEvent("pagehide", { persisted: true })) })
-    await expect.poll(() => video.evaluate(v => (v as HTMLVideoElement).paused)).toBe(true)
-    await page.evaluate(() => window.dispatchEvent(new PageTransitionEvent("pageshow", { persisted: true })))
-    await expect.poll(() => video.evaluate(v => (v as HTMLVideoElement).paused)).toBe(false)
-    await page.reload()
-    await expect.poll(() => video.evaluate(v => (v as HTMLVideoElement).currentTime)).toBeGreaterThan(.2)
-    await page.goto("/")
-    await page.goBack()
-    await expect.poll(() => video.evaluate(v => (v as HTMLVideoElement).currentTime)).toBeGreaterThan(.2)
-    expect(await video.evaluate(v => (v as HTMLVideoElement).paused)).toBe(false)
-  } finally { await context.close(); if (engine === "webkit") await runtime.close() }
-})
-
-test("mobile hero retries transient autoplay failure without manual play", async ({ browser, baseURL }) => {
-  const context = await browser.newContext({ baseURL, viewport: { width: 393, height: 852 }, isMobile: true, hasTouch: true })
-  try {
-    const page = await context.newPage()
-    await publicSession(page)
-    await page.addInitScript(() => {
-      const play = HTMLMediaElement.prototype.play
-      let failures = 0
-      HTMLMediaElement.prototype.play = function () {
-        if (this.hasAttribute("data-mobile-hero-video") && failures++ < 2) { this.pause(); return Promise.reject(new DOMException("Transient autoplay failure", "NotAllowedError")) }
-        return play.call(this)
-      }
-    })
-    await page.goto("/imoveis")
-    await expect.poll(() => page.locator("[data-mobile-hero-video]").evaluate(v => !(v as HTMLVideoElement).paused && (v as HTMLVideoElement).currentTime > .3)).toBe(true)
-  } finally { await context.close() }
 })
 
 async function proposalSession(page: Page, content: string) {

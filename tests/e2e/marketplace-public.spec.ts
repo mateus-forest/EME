@@ -278,6 +278,7 @@ test.describe('Marketplace público', () => {
   })
 
   test('hero faz crossfade com dois buffers e prepara somente o próximo vídeo', async ({ page }) => {
+    await page.route('**/api/**', route => route.fulfill({ json: { user: null, metrics: [] } }))
     const requestedHeroVideos = new Set<string>()
     page.on('request', (request) => {
       const pathname = new URL(request.url()).pathname
@@ -285,13 +286,15 @@ test.describe('Marketplace público', () => {
     })
 
     await page.goto('/imoveis')
-    const videos = page.locator('video[src^="/marketplace/videos/hero-"]')
-    const current = videos.nth(0)
-    const next = videos.nth(1)
+    const videos = page.locator('[data-hero-video-background] video')
+    const current = page.locator('[data-hero-video-slot="0"]')
+    const next = page.locator('[data-hero-video-slot="1"]')
 
     await expect(videos).toHaveCount(2)
-    await expect(current).toHaveClass(/opacity-100/)
-    await expect(next).toHaveClass(/opacity-0/)
+    await expect(current).toHaveAttribute('data-active', 'true')
+    await expect(next).toHaveAttribute('data-active', 'false')
+    await expect(current).toHaveAttribute('preload', 'auto')
+    await expect(next).toHaveAttribute('preload', 'auto')
     await expect.poll(() => current.evaluate((video) => (video as HTMLVideoElement).duration)).toBeGreaterThan(2.4)
     await expect.poll(() => requestedHeroVideos.size).toBe(2)
     expect([...requestedHeroVideos].sort()).toEqual([
@@ -299,22 +302,26 @@ test.describe('Marketplace público', () => {
       '/marketplace/videos/hero-2.mp4',
     ])
 
-    await current.evaluate((video) => {
+    // Observe native completion: neither seeking nor synthetic media/transition
+    // events may shorten the first clip or force the buffer handoff.
+    const ended = await current.evaluate((video) => {
       const element = video as HTMLVideoElement
-      element.currentTime = element.duration - 2
-      element.dispatchEvent(new Event('timeupdate'))
+      const snapshot = () => ({ time: element.currentTime, duration: element.duration })
+      if (element.ended) return Promise.resolve(snapshot())
+      return new Promise<{ time: number; duration: number }>(resolve => {
+        element.addEventListener('ended', () => resolve(snapshot()), { once: true })
+      })
     })
+    expect(ended.time).toBeCloseTo(ended.duration, 1)
 
-    await expect(current).toHaveClass(/opacity-0/)
-    await expect(next).toHaveClass(/opacity-100/)
+    await expect(current).toHaveAttribute('data-active', 'false')
+    await expect(next).toHaveAttribute('data-active', 'true')
     await expect.poll(() => next.evaluate((video) => (video as HTMLVideoElement).paused)).toBe(false)
 
-    await current.evaluate((video) => {
-      video.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity' }))
-    })
-
     await expect(current).toHaveAttribute('src', '/marketplace/videos/hero-3.mp4')
+    await expect(current).toHaveCSS('opacity', '0')
     await expect(next).toHaveAttribute('src', '/marketplace/videos/hero-2.mp4')
+    await expect(next).toHaveCSS('opacity', '1')
     await expect(videos).toHaveCount(2)
     await expect.poll(() => requestedHeroVideos.has('/marketplace/videos/hero-3.mp4')).toBe(true)
     expect(requestedHeroVideos.size).toBe(3)
