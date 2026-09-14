@@ -18,6 +18,7 @@ import {
   LayoutDashboard,
   LogOut,
   Store,
+  Search,
   UserRound,
   type LucideIcon,
 } from "lucide-react"
@@ -57,6 +58,7 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
     items: [
       { label: "Clientes", icon: UserRound, href: "/corretor/clientes" },
       { label: "Imóveis", icon: Building2, href: "/corretor/imoveis" },
+      { label: "Captação", icon: Search, href: "/corretor/captacao" },
     ],
   },
   {

@@ -240,7 +240,7 @@ export function useBrokerProperties() {
     }
   }, [getPropertySyncSourceId, refreshProperties])
 
-  async function addProperty(property: BrokerPropertyInput) {
+  async function addProperty(property: BrokerPropertyInput, capture?: { id: string; reviewed: true; duplicatesReviewed: true }) {
     const response = await fetch("/api/properties", {
       method: "POST",
       headers: {
@@ -249,6 +249,7 @@ export function useBrokerProperties() {
       credentials: "include",
       cache: "no-store",
       body: JSON.stringify({
+        ...(capture ? { captureId: capture.id, captureReviewed: capture.reviewed, duplicatesReviewed: capture.duplicatesReviewed } : {}),
         title: property.title,
         description: property.description,
         price: property.price,

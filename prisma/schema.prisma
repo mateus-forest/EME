@@ -223,6 +223,8 @@ model UserPasskeyCredential {
 }
 
 model Broker {
+  captacoes Captacao[]
+  captacaoQueries CaptacaoQuery[]
   propertyCapacityEvents BrokerPropertyCapacityEvent[]
   id                        String                     @id @default(cuid())
   userId                    String                     @unique
@@ -314,6 +316,7 @@ model Agency {
 }
 
 model Property {
+  captacao Captacao?
   id                        String                     @id @default(cuid())
   publicCode                Int?
   title                     String
@@ -557,6 +560,7 @@ model SearchEvent {
 }
 
 model AgendaEvent {
+  captacao Captacao?
   id         String    @id @default(cuid())
   brokerId   String
   title      String
@@ -934,6 +938,7 @@ model Notification {
 }
 
 model Lead {
+  captacoes Captacao[]
   id                        String                     @id @default(cuid())
   name                      String?
   email                     String?
@@ -1202,4 +1207,66 @@ model MarketplaceRegionMedia {
   updatedAt         DateTime @updatedAt
 
   @@index([state, city])
+}
+
+enum CaptacaoStage {
+  SAVED
+  CONTACTED
+  CONVERSATION
+  VISIT
+  CONFIRMED
+  DISCARDED
+}
+
+model Captacao {
+  id String @id @default(cuid())
+  brokerId String
+  sourceKey String
+  listing Json
+  stage CaptacaoStage @default(SAVED)
+  notes String @default("")
+  nextAction String @default("")
+  dueAt DateTime?
+  doNotContact Boolean @default(false)
+  advertiserKind String?
+  identityEvidence String @default("")
+  agendaEventId String? @unique
+  leadId String?
+  propertyId String? @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  broker Broker @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  agendaEvent AgendaEvent? @relation(fields: [agendaEventId], references: [id], onDelete: SetNull)
+  lead Lead? @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  property Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  activities CaptacaoActivity[]
+  @@unique([brokerId, sourceKey])
+  @@index([brokerId, stage, updatedAt])
+  @@index([brokerId, dueAt])
+}
+
+model CaptacaoActivity {
+  id String @id @default(cuid())
+  captacaoId String
+  operationKey String
+  action String
+  note String
+  createdAt DateTime @default(now())
+  captacao Captacao @relation(fields: [captacaoId], references: [id], onDelete: Cascade)
+  @@unique([captacaoId, operationKey])
+  @@index([captacaoId, createdAt])
+}
+
+model CaptacaoQuery {
+  id String @id @default(cuid())
+  brokerId String
+  fingerprint String
+  source String
+  response Json?
+  errorCode String?
+  createdAt DateTime @default(now())
+  completedAt DateTime?
+  broker Broker @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  @@index([brokerId, fingerprint, createdAt])
+  @@index([createdAt])
 }

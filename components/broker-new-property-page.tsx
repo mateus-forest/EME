@@ -1,4 +1,5 @@
-﻿"use client"
+"use client"
+import type { CaptureInventoryContext } from "@/components/broker-captacao-inventory"
 
 import Link from "next/link"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
@@ -71,10 +72,10 @@ declare global {
   }
 }
 
-export function BrokerNewPropertyPage() {
+export function BrokerNewPropertyPage({ captureContext }: { captureContext?: CaptureInventoryContext } = {}) {
   const { properties, addProperty, uploadPropertyImages, uploadPropertyAudio, refreshProperties } = useBrokerProperties()
   const { subscription } = useBrokerSubscription()
-  const [creationMode, setCreationMode] = useState<CreationMode | null>(null)
+  const [creationMode, setCreationMode] = useState<CreationMode | null>(captureContext ? "manual" : null)
   const [images, setImages] = useState<string[]>([])
   const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const [audioFile, setAudioFile] = useState<File | null>(null)
@@ -82,24 +83,24 @@ export function BrokerNewPropertyPage() {
   const [aiContext, setAiContext] = useState("")
   const [isRecordingAudio, setIsRecordingAudio] = useState(false)
   const [isTranscribingAudio, setIsTranscribingAudio] = useState(false)
-  const [title, setTitle] = useState("")
-  const [city, setCity] = useState("")
-  const [neighborhood, setNeighborhood] = useState("")
+  const [title, setTitle] = useState(captureContext?.listing.title ?? "")
+  const [city, setCity] = useState(captureContext?.listing.city ?? "")
+  const [neighborhood, setNeighborhood] = useState(captureContext?.listing.neighborhood ?? "")
   const [cep, setCep] = useState("")
   const [street, setStreet] = useState("")
   const [addressNumber, setAddressNumber] = useState("")
   const [addressComplement, setAddressComplement] = useState("")
-  const [state, setState] = useState("")
-  const [privateArea, setPrivateArea] = useState("")
-  const [ownerName, setOwnerName] = useState("")
-  const [price, setPrice] = useState("")
-  const [propertyType, setPropertyType] = useState<PropertyType>("Apartamento")
-  const [propertyPurpose, setPropertyPurpose] = useState<PropertyPurpose>("Venda")
+  const [state, setState] = useState(captureContext?.listing.state ?? "")
+  const [privateArea, setPrivateArea] = useState(captureContext?.listing.area?.toString() ?? "")
+  const [ownerName, setOwnerName] = useState(captureContext?.ownerName ?? "")
+  const [price, setPrice] = useState(captureContext?.listing.price?.toString() ?? "")
+  const [propertyType, setPropertyType] = useState<PropertyType>(captureContext?.listing.propertyType ? ({ apartment: "Apartamento", house: "Casa", land: "Terreno", penthouse: "Cobertura", commercial_room: "Sala comercial" } as const)[captureContext.listing.propertyType] : "Apartamento")
+  const [propertyPurpose, setPropertyPurpose] = useState<PropertyPurpose>(captureContext?.listing.businessType === "rent" ? "Locação" : "Venda")
   const [publishStatus, setPublishStatus] = useState<PublishStatus>("Rascunho")
   const [description, setDescription] = useState("")
-  const [bedrooms, setBedrooms] = useState(2)
-  const [bathrooms, setBathrooms] = useState(2)
-  const [parking, setParking] = useState(1)
+  const [bedrooms, setBedrooms] = useState(captureContext ? captureContext.listing.bedrooms ?? 0 : 2)
+  const [bathrooms, setBathrooms] = useState(captureContext ? 0 : 2)
+  const [parking, setParking] = useState(captureContext ? captureContext.listing.parking ?? 0 : 1)
   const [isGenerating, setIsGenerating] = useState(false)
   const [hasGenerated, setHasGenerated] = useState(false)
   const [isPublished, setIsPublished] = useState(false)
@@ -608,7 +609,7 @@ export function BrokerNewPropertyPage() {
         bedrooms,
         bathrooms,
         parking,
-        status: publishStatus,
+        status: captureContext ? "Rascunho" : publishStatus,
         views: "0",
         leads: "0",
         type: propertyType,
@@ -631,7 +632,7 @@ export function BrokerNewPropertyPage() {
           score: 0,
           pending: [],
         },
-      })
+      }, captureContext)
 
       const mediaErrors: string[] = []
 
@@ -752,7 +753,7 @@ export function BrokerNewPropertyPage() {
           <>
 
         <section className="rounded-[1.75rem] border border-black/[0.06] bg-white/90 px-6 py-6 shadow-[0_18px_60px_rgba(15,23,42,0.06)]">
-          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imóvel</p>
+          <p className="text-[11px] uppercase tracking-[0.24em] text-[#7B8491]">Novo imóvel</p>{captureContext && <p className="mt-3 rounded-xl bg-green-50 p-3 text-sm text-green-900">Origem: Captação. Revise todos os dados, inclusive os campos não informados no anúncio. Nenhuma foto ou descrição foi importada. Este cadastro será salvo como rascunho.</p>}
           <h2 className="mt-3 text-3xl font-semibold tracking-tight text-[#050505]">
             {creationMode === "ai" ? "Use fotos, áudio ou texto para gerar o anúncio" : "Preencha os dados do imóvel com controle total"}
           </h2>
@@ -764,7 +765,7 @@ export function BrokerNewPropertyPage() {
           <Button
             type="button"
             variant="ghost"
-            onClick={() => setCreationMode(null)}
+            onClick={() => { if (captureContext) window.location.assign("/corretor/captacao"); else setCreationMode(null) }}
             className="mt-5 h-10 rounded-xl border border-black/[0.06] bg-white/80 px-4 text-[#4B5563] hover:bg-white hover:text-[#050505]"
           >
             Voltar
@@ -974,7 +975,7 @@ export function BrokerNewPropertyPage() {
                     </Select>
                   </Field>
                   <Field label="Status">
-                    <Select value={publishStatus} onValueChange={(value) => setPublishStatus(value as PublishStatus)}>
+                    <Select disabled={Boolean(captureContext)} value={publishStatus} onValueChange={(value) => setPublishStatus(value as PublishStatus)}>
                       <SelectTrigger className="h-10 w-full rounded-xl border-black/[0.06] bg-white/80 text-[#050505]">
                         <SelectValue />
                       </SelectTrigger>

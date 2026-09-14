@@ -1,3 +1,5 @@
+import { assertInventoryCapture, CaptacaoError } from "@/lib/captacao/service"
+import type { Listing } from "@/lib/captacao/contract"
 import { propertyCreatedJourney } from "@/lib/journey/business"
 import { withJourneyRoute } from "@/lib/journey/server"
 import { UserRole } from "@/lib/prisma-enums"
@@ -92,11 +94,20 @@ async function handlePOST(request: NextRequest) {
       }
     }
 
+    const retryCaptureId = typeof body?.captureId === "string" ? body.captureId.slice(0,120) : ""
+    if(retryCaptureId && body.captureReviewed === true && body.duplicatesReviewed === true && statusPayload.status === "DRAFT" && images.length === 0) {
+      const prior=await prisma.captacao.findFirst({where:{id:retryCaptureId,brokerId:user.broker.id,stage:"CONFIRMED",propertyId:{not:null}}})
+      if(prior?.propertyId){const existing=await prisma.property.findFirst({where:{id:prior.propertyId,brokerId:user.broker.id},include:propertyInclude});if(existing)return NextResponse.json({property:serializeProperty(existing)},{status:200,headers:{"Cache-Control":"no-store"}})}
+    }
     const billingBlocked = await enforceBrokerPropertyCreation(user)
     if (billingBlocked) return billingBlocked
 
+    const captureId = typeof body?.captureId === "string" ? body.captureId.slice(0,120) : ""
+    if(captureId && (body.captureReviewed !== true || body.duplicatesReviewed !== true || statusPayload.published || statusPayload.status !== "DRAFT" || images.length > 0)) {
+      return NextResponse.json({error:"A inclusão por Captação exige revisão e deve gerar somente um rascunho, sem importar fotos."},{status:400})
+    }
     const publicCode = await getNextPropertyPublicCode(prisma, user.broker.id)
-    const property = await prisma.property.create({
+    const createInput = {
       data: {
         publicCode,
         title,
@@ -119,10 +130,26 @@ async function handlePOST(request: NextRequest) {
         agencyId: null,
       },
       include: propertyInclude,
-    })
-    propertyCreatedJourney(property)
+    }
+    const brokerId = user.broker.id
+    let wasCreated = true
+    const property = captureId ? await prisma.$transaction(async tx => {
+      const capture = await assertInventoryCapture(tx,brokerId,captureId)
+      if(capture.propertyId) {
+        const existing = await tx.property.findFirst({where:{id:capture.propertyId,brokerId},include:propertyInclude})
+        if(existing){wasCreated=false;return existing}
+      }
+      const origin = capture.listing as unknown as Listing
+      const created = await tx.property.create({...createInput,data:{...createInput.data,
+        publicCode:await getNextPropertyPublicCode(tx,brokerId),
+        legalData:{...legalData,legalNotes:`${legalData.legalNotes}\nOrigem revisada: ${origin.url}\nCaptação EME: ${captureId}`.trim()},
+      }})
+      await tx.captacao.update({where:{id:captureId},data:{propertyId:created.id,activities:{create:{operationKey:"inventory",action:"INVENTORY",note:"Imóvel adicionado à carteira após revisão, como rascunho. Fotos e descrição de terceiros não importadas automaticamente."}}}})
+      return created
+    }) : await prisma.property.create(createInput)
+    if(wasCreated)propertyCreatedJourney(property)
 
-    await prisma.notification.create({
+    if(wasCreated)await prisma.notification.create({
       data: {
         userId: user.id,
         title: statusPayload.published ? "Novo imóvel publicado" : "Novo rascunho criado",
@@ -135,6 +162,7 @@ async function handlePOST(request: NextRequest) {
     response.headers.set("Cache-Control", "no-store, max-age=0")
     return response
   } catch (caughtError) {
+    if(caughtError instanceof CaptacaoError)return NextResponse.json({error:caughtError.message,code:caughtError.code},{status:caughtError.status})
     console.error("[api][properties] create failed", {
       message: caughtError instanceof Error ? caughtError.message : "unknown",
     })
