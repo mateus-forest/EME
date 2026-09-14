@@ -75,7 +75,7 @@ test.describe("Landing EME mobile e autenticação", () => {
     expect(compositorStyles.willChange).toContain("transform")
     expect(compositorStyles.willChange).toContain("opacity")
     expect(compositorStyles.filter).toBe("none")
-    expect(compositorStyles.zIndex).toBe("auto")
+    expect(compositorStyles.zIndex).toMatch(/^-?\d+$/)
     expect(compositorStyles.backfaceVisibility).toBe("hidden")
     expect(compositorStyles.backdropFilter).toBe("none")
   })

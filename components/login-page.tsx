@@ -11,7 +11,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { PinCodeInput } from "@/components/ui/pin-code-input"
-import { getDefaultRouteByRole, type AuthenticatedUser } from "@/lib/auth-client"
+import { type AuthenticatedUser } from "@/lib/auth-client"
+import { resolveAuthRedirect } from "@/lib/auth-redirect"
 import { cn } from "@/lib/utils"
 
 type LoginMethod = "password" | "pin"
@@ -43,11 +44,8 @@ export function LoginPage() {
     submitPin,
     submitBiometric,
   } = usePremiumLogin((user: AuthenticatedUser) => {
-    const next = typeof window !== "undefined" ? new URLSearchParams(window.location.search).get("next") : null
-    const fallbackRoute = getDefaultRouteByRole(user.role)
-    const targetRoute = next && next.startsWith("/") ? next : fallbackRoute
-
-    router.push(targetRoute)
+    const next = typeof window !== "undefined" ? new URLSearchParams(window.location.search).getAll("next") : null
+    router.push(resolveAuthRedirect(next, user.role))
   })
 
   const subtitle = useMemo(() => {

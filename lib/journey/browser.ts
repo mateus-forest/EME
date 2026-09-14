@@ -63,8 +63,10 @@ export function signupJourneyProgress(form: HTMLFormElement) {
     const steps = signupSteps.get(form) ?? new Set<string>()
     signupSteps.set(form, steps)
     const inputs = Array.from(form.querySelectorAll<HTMLInputElement | HTMLSelectElement>('input[type="text"], input[type="email"], input[type="password"], select')).filter(input => input.getAttribute("autocomplete") !== "tel" && input.getAttribute("inputmode") !== "tel")
-    const identity = inputs.filter(input => input.type !== "password")
-    const credentials = inputs.filter(input => input.type === "password")
+    // Revealing a password changes its input type, not its role in the form.
+    const isCredential = (input: HTMLInputElement | HTMLSelectElement) => input.type === "password" || ["new-password", "current-password"].includes(input.getAttribute("autocomplete") ?? "")
+    const identity = inputs.filter(input => !isCredential(input))
+    const credentials = inputs.filter(isCredential)
     for (const [step, fields] of [["identity", identity], ["credentials", credentials]] as const) {
       if (!steps.has(step) && fields.length && fields.every(field => field.validity.valid && Boolean(field.value)) && (step !== "credentials" || fields.every(field => field.value === fields[0].value))) {
         steps.add(step)

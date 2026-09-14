@@ -63,12 +63,16 @@ export function usePremiumLogin(onAuthenticated: (user: AuthenticatedUser) => vo
     void refreshTrustedStatus()
   }, [refreshTrustedStatus])
 
-  const submitPassword = useCallback(async () => {
+  const submitPassword = useCallback(async (credentials?: { email: string; password: string }) => {
+    const submittedEmail = credentials?.email ?? email
+    const submittedPassword = credentials?.password ?? password
+    setEmail(submittedEmail)
+    setPassword(submittedPassword)
     setIsSubmitting(true)
     setError("")
 
     try {
-      const user = await loginWithPassword(email, password)
+      const user = await loginWithPassword(submittedEmail, submittedPassword)
       onAuthenticated(user)
     } catch (caughtError) {
       setError(caughtError instanceof Error ? caughtError.message : "Nao foi possivel entrar agora.")

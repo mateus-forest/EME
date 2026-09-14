@@ -63,10 +63,21 @@ async function handlePOST(request: NextRequest) {
   try {
     const body = await request.json().catch(() => null)
 
+    // Public registration must not inherit privileged roles from the user enum.
     const role =
-      typeof body?.role === "string" && Object.values(UserRole).includes(body.role as UserRole)
-        ? (body.role as UserRole)
-        : undefined
+      body?.role === UserRole.BROKER
+        ? UserRole.BROKER
+        : body?.role === UserRole.AGENCY
+          ? UserRole.AGENCY
+          : undefined
+
+    if (!role) {
+      return NextResponse.json(
+        { error: "Tipo de cadastro público inválido.", code: "PUBLIC_REGISTRATION_ROLE_INVALID" },
+        { status: 400 },
+      )
+    }
+
     const name = typeof body?.name === "string" ? body.name.trim() : ""
     const email = typeof body?.email === "string" ? body.email.trim().toLowerCase() : ""
     const password = typeof body?.password === "string" ? body.password : ""
@@ -75,12 +86,8 @@ async function handlePOST(request: NextRequest) {
     const creciUf = typeof body?.creciUf === "string" ? body.creciUf.trim().toUpperCase() : ""
     const companyName = typeof body?.companyName === "string" ? body.companyName.trim() : ""
 
-    if (!role || !name || !email || !password) {
+    if (!name || !email || !password) {
       return NextResponse.json({ error: "Dados obrigatórios não informados." }, { status: 400 })
-    }
-
-    if (![UserRole.BROKER, UserRole.AGENCY, UserRole.ADMIN].includes(role)) {
-      return NextResponse.json({ error: "Role inválido." }, { status: 400 })
     }
 
     if (role === UserRole.AGENCY && !companyName) {

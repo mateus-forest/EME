@@ -115,7 +115,7 @@ function FinancePreview() {
 function StudioPreview() {
   return <div className={styles.preview}>
     <div className={styles.previewHeader}><span>Preparar imóvel</span><ImageIcon size={20} aria-hidden /></div>
-    <Image className={styles.studioImage} src="/property-raw.png" alt="Imagem de um ambiente vazio, usada para ilustrar a etapa de envio" width={1024} height={1024} sizes="(min-width: 1024px) 480px, 90vw" />
+    <Image className={styles.studioImage} src="/modals/studio-preparar-imovel.png" alt="Studio EME: Criar campanha, Preparar imóvel em destaque, Visualizar projeto, Criar vídeo e Criar anúncio. Comparação ilustrativa do ambiente original vazio à esquerda e preparado com IA, mobiliado, à direita." width={1024} height={1024} sizes="(min-width: 1024px) 480px, 90vw" />
     <div className={styles.previewBody}><p className={styles.eyebrow}>Imagem de entrada · exemplo ilustrativo</p><h3>Do original à sua revisão</h3>
       <ol className={styles.steps}><li>Escolha a imagem e a preparação.</li><li>Gere e compare com o original.</li><li>Revise e aprove na Biblioteca.</li></ol>
       <p className={styles.small}>Esta demonstração mostra a etapa de entrada, não um resultado gerado. Cada resultado precisa ser conferido.</p>

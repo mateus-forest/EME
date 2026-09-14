@@ -1,0 +1,5 @@
+GSAP 3.14.2 and ScrollTrigger 3.14.2
+Copyright GreenSock / GSAP. Distributed files retain their original license headers.
+Downloaded from the official gsap npm package via jsDelivr.
+License: https://gsap.com/standard-license/
+Documentation: https://gsap.com/docs/v3/

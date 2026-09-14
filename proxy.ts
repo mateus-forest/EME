@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server"
+import { getInternalAuthDestination } from "./lib/auth-redirect"
 
 const disabledPageRedirects = [
   { prefix: "/admin/imobiliarias", target: "/admin/corretores" },
@@ -22,6 +23,18 @@ function matchesPrefix(pathname: string, prefix: string) {
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
+  if (matchesPrefix(pathname, "/login") && request.nextUrl.searchParams.has("next")) {
+    const values = request.nextUrl.searchParams.getAll("next")
+    const destination = getInternalAuthDestination(values)
+    if (!destination || destination !== values[0]) {
+      const url = request.nextUrl.clone()
+      url.searchParams.delete("next")
+      if (destination) url.searchParams.set("next", destination)
+      // Without a valid next, the client uses the authenticated role's default.
+      return NextResponse.redirect(url)
+    }
+  }
+
   if (disabledApiPrefixes.some((prefix) => matchesPrefix(pathname, prefix))) {
     return NextResponse.json(
       { error: "Fluxo de imobiliária indisponível no MVP do EME para corretores individuais." },
@@ -42,6 +55,8 @@ export function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/login",
+    "/login/:path*",
     "/admin/imobiliarias",
     "/admin/imobiliarias/:path*",
     "/cadastro/imobiliaria",

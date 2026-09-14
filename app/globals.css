@@ -1179,8 +1179,8 @@
     background:
       radial-gradient(circle at 50% 0%, rgba(255, 255, 255, 0.18), transparent 38%),
       linear-gradient(150deg, rgba(15, 31, 24, 0.42), rgba(8, 22, 15, 0.62));
-    -webkit-backdrop-filter: blur(12px) saturate(106%);
-    backdrop-filter: blur(12px) saturate(106%);
+    -webkit-backdrop-filter: blur(9px) saturate(106%);
+    backdrop-filter: blur(9px) saturate(106%);
     will-change: opacity;
   }
 
@@ -1191,8 +1191,8 @@
   .eme-auth-modal-sheet {
     border-radius: 28px;
     background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(240, 248, 243, 0.94));
-    -webkit-backdrop-filter: blur(18px) saturate(112%);
-    backdrop-filter: blur(18px) saturate(112%);
+    -webkit-backdrop-filter: blur(13px) saturate(112%);
+    backdrop-filter: blur(13px) saturate(112%);
   }
 
 @media (max-width: 767px) {
@@ -1200,8 +1200,8 @@
     border-radius: 22px;
     border-color: rgba(255, 255, 255, 0.58);
     background: linear-gradient(150deg, rgba(255, 255, 255, 0.96), rgba(241, 248, 243, 0.9));
-    -webkit-backdrop-filter: blur(14px) saturate(112%);
-    backdrop-filter: blur(14px) saturate(112%);
+    -webkit-backdrop-filter: blur(11px) saturate(112%);
+    backdrop-filter: blur(11px) saturate(112%);
   }
 }
 
