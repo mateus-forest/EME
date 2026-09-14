@@ -1,19 +1,19 @@
-# Captação de Imóveis — primeira versão local
+# Captação de Imóveis — portal atual e validação local
 
 Data da verificação: 14/09/2026. Sem push, publicação ou conexão com banco de produção.
 
 ## Base e preservação
 
 - Origem: `C:\Users\mateu\Downloads\EME 2.0\EME`, branch `feat/landing-integracao-20260911`, HEAD `51207544b00a2ab75fe176eb55b1fd3dccab5f12`, incluindo alterações locais existentes.
-- Desenvolvimento: cópia Git independente em `C:\Users\mateu\Documents\eme-captacao\app`, branch local `main`. O Git da pasta original não foi alterado.
+- Desenvolvimento atual, por autorização posterior do usuário: `C:\Users\mateu\Downloads\EME 2.0\EME`, branch `main`. A cópia independente anterior permanece em `C:\Users\mateu\Documents\eme-captacao\app` como referência, sem ser a prévia ativa.
 - Registro anterior ao desenvolvimento: `C:\Users\mateu\Documents\eme-captacao\snapshot`, manifesto SHA-256 de 1.316 arquivos versionados/não ignorados e cópia dos arquivos de produto. Segredos de ambiente e arquivos de limpeza de contas não foram transportados. O original permaneceu no lugar, incluindo esses arquivos.
-- Commit inicial de preservação: `01451c0`. Guarda a integração local existente de landing/acesso antes da Captação.
+- Preservação inicial na cópia: `01451c0`. Na pasta original, `e8bb70c` guarda os mesmos 46 arquivos existentes; `0bb79a5` acrescenta Captação. Antes da mudança de branch, novo backup em `C:\Users\mateu\Documents\eme-captacao\backup-original-20260914` com bundle Git, patch, arquivos alterados e ambiente privado. Os 1.316 hashes do original foram novamente conferidos antes das alterações.
 - Não foi usada a pasta `EME-Portal-Integracao`. Nenhum componente do redesenho foi importado. `BROKER_PORTAL_V2=false` na prévia. O menu lateral atual permanece.
 - Mudanças existentes de landing, login e cadastro não foram substituídas por demonstrações. A correção do player persistente do Marketplace da base original permanece.
 
-### Impedimento para um futuro push em main
+### Conciliação pública autorizada e concluída
 
-O estado de trabalho original não corresponde integralmente aos últimos arquivos públicos aprovados em 11/09. A comparação com o histórico público `c531b32` encontrou sete arquivos que precisam de conciliação separada:
+O estado de trabalho original não corresponde integralmente aos últimos arquivos públicos aprovados em 11/09. A comparação com o histórico público `c531b32` encontrou sete arquivos conciliados separadamente, após autorização explícita do usuário em 14/09:
 
 1. `app/(auth)/page.tsx`: metadados/título e indexação condicionada ao ambiente Production; o estado local ainda usa `index: false` de forma incondicional.
 2. `components/eme/integrated-landing/landing-markup.ts`: marca refinada e link público Marketplace.
@@ -23,7 +23,7 @@ O estado de trabalho original não corresponde integralmente aos últimos arquiv
 6. `app/imoveis/corretores/[slug]/page.tsx`: exibição de todos os imóveis publicados.
 7. `tests/marketplace-broker-listings.test.mjs`: teste dessa correção pública.
 
-A leitura do histórico mostrou que `c531b32` altera três arquivos da carteira pública e que os commits públicos anteriores de landing não alteram `app/corretor`, `broker-sidebar` ou `broker-page-shell`. Mesmo assim, a revisão automática de aprovação bloqueou recuperar esses sete arquivos: associou o SHA à integração arquivada e apontou risco de sobrescrita. A recuperação **não foi aplicada**. O trabalho da Captação segue separado e revisável; não considerar um push direto em `main` seguro até resolver esta pendência. Não há merge, push ou alteração da produção.
+A leitura do histórico mostrou que `c531b32` altera três arquivos da carteira pública e que os commits públicos anteriores de landing não alteram `app/corretor`, `broker-sidebar` ou `broker-page-shell`. A revisão automática inicialmente bloqueou a recuperação. Depois do backup e dos commits de preservação, o usuário confirmou expressamente a substituição desses sete arquivos públicos. Eles foram recuperados individualmente de `c531b32`, sem merge de branch e sem componente do redesenho. Esta pendência foi resolvida; não houve push nem alteração da produção.
 
 ## Fluxo implementado
 
@@ -51,7 +51,7 @@ Fontes primárias por linha: [Chaves PLP](https://geckoapi.com.br/docs/chavesnam
 
 ### Custos, limites e cache
 
-As páginas consultadas desses oito endpoints não fixam um custo individual verificável. **Não foi assumido 1 crédito por consulta.** A [página de preços](https://geckoapi.com.br/precos/) informa 100 créditos iniciais, Developer de R$ 126,90/mês com 10.000 créditos e Business de R$ 999,90/mês com 100.000; o consumo varia por endpoint. Confirmar os custos e limites da conta no dashboard antes de habilitar a chave. Nenhuma consulta paga foi realizada nesta entrega.
+Na primeira implementação, as páginas públicas consultadas não fixavam um custo individual verificável. Em 14/09, o dashboard autenticado confirmou **1 crédito** para cada uma das quatro fontes. Uma consulta real ao Chaves na Mão consumiu exatamente um crédito: saldo de 100 para 99. Não houve recarga, contratação nem rotação de chave. A [página de preços](https://geckoapi.com.br/precos/) informa 100 créditos iniciais, Developer de R$ 126,90/mês com 10.000 créditos e Business de R$ 999,90/mês com 100.000; o consumo varia por endpoint. Confirmar os custos e limites da conta no dashboard antes de habilitar a chave. Apenas uma consulta real foi executada nesta ativação; nenhum consumo adicional foi realizado para as outras fontes.
 
 A implementação faz uma requisição por fonte/página e uma por detalhe solicitado, sem retries automáticos. Limites internos de segurança: 20 requisições/corretor/hora, 200 globais/hora, máximo de 50 páginas e 100 itens normalizados por resposta. Esses limites são do EME, não quotas prometidas pelo fornecedor. Não há desconto de créditos do corretor nem regra nova de cobrança.
 
@@ -74,11 +74,11 @@ Migração aditiva: `prisma/migrations/20260914100000_add_captacao/migration.sql
 
 ## Prévia e testes
 
-Prévia: `http://localhost:3116/corretor/captacao`. Acesso local em `C:\Users\mateu\Documents\eme-captacao\qa\ACESSO-LOCAL.txt`. Inicializador: `qa\start-preview.ps1` da pasta externa, preservando o ambiente sanitizado. Edite **`C:\Users\mateu\Documents\eme-captacao\app`** para ver alterações na prévia.
+Prévia: `http://localhost:3116/corretor/captacao`. Acesso local em `C:\Users\mateu\Documents\eme-captacao\qa\ACESSO-LOCAL.txt`. Inicializador: `qa\start-preview.ps1` da pasta externa, preservando o ambiente sanitizado. Edite **`C:\Users\mateu\Downloads\EME 2.0\EME`** para ver alterações na prévia. O inicializador externo agora executa essa pasta, com o ambiente privado de teste separado.
 
-Banco local exclusivo: PostgreSQL em `127.0.0.1:55449`, banco `captacao_preview`. Contas novas, sem importação das contas existentes. Serviços externos sem chaves; `BROKER_PORTAL_V2=false`. Os registros de teste persistidos têm identificação FIXTURE. A interface normal de busca mostra integração não configurada.
+Banco local exclusivo: PostgreSQL em `127.0.0.1:55449`, banco `captacao_preview`. Contas novas, sem importação das contas existentes. A chave existente da GeckoAPI foi configurada somente no `.env.local` original, ignorado pelo Git. `BROKER_PORTAL_V2=false`; os demais serviços externos ficam desativados no iniciador. Os registros sintéticos antigos continuam identificados como FIXTURE. A busca normal agora consulta a GeckoAPI de verdade, somente por clique.
 
-### Evidência real local
+### Evidência real local anterior à ativação da chave
 
 17 verificações HTTP/servidor/PostgreSQL aprovadas: acesso anônimo/senha incorreta, login/cookie HttpOnly, ausência de configuração, salvar concorrentemente uma única oportunidade, ausência de criação automática de cliente/imóvel, leitura/gravação/comprovante isolados entre corretores, comprovante adulterado, contato explícito/idempotente, preferência de não contato, Agenda e remarcação sem duplicatas, associação consciente a contato próprio, revisão obrigatória, rascunho com origem sem republicação de mídia, limites de consumo antes do fornecedor e indicadores por ações.
 
@@ -92,7 +92,7 @@ Mobile em 320/390/430 px: ausência de overflow horizontal e rolagem completa do
 
 Compilação Next completa e TypeScript: aprovados. Lint dos arquivos de produto alterados: aprovado. Ajuste mínimo `allowImportingTsExtensions=true` em `tsconfig.json`, com `noEmit` já existente, para acomodar imports `.ts` dos testes antigos que impediam a checagem integral. Nenhuma dependência de produto adicionada; package/lock preservados.
 
-Comandos de testes (na cópia):
+Comandos da validação anterior (na cópia isolada, com fornecedor desativado; não repetir a suíte de cenário não configurado contra a prévia real atual):
 
 ```powershell
 node --test tests/captacao/domain.test.cjs
@@ -108,8 +108,26 @@ Os testes locais exigem explicitamente o banco/porta isolados. Não apontar esse
 
 **Preexistentes:** a reprodução do histórico completo de migrações em um banco vazio falhou em `20260811233000_contract_template_engine`, por ausência de `BrokerDocument`. A migração antiga não foi alterada. A nova migração foi aplicada e testada num segundo banco vazio inicializado com o schema anterior atual. O primeiro banco local de diagnóstico, `captacao_local`, foi preservado. Antes de uma migração futura, conferir o histórico efetivo do ambiente de destino; não executar reset nem substituir banco. Recuperação de senha permanece na condição anterior; não foram simulados envios.
 
-**Dependências desta funcionalidade:** chave GeckoAPI e saldo/permissões/limites por fonte, confirmação contratual de retenção e homologação ao vivo de respostas/filtros/contatos. ZAP e OLX têm lacunas documentadas: filtros locais podem excluir anúncios sem atributos; a cobertura é parcial. Identificação de proprietário depende de evidência registrada pelo corretor. Busca real e custos não foram homologados sem credenciais.
+**Dependências desta funcionalidade:** a chave e o saldo locais estão confirmados. Ainda faltam homologação ao vivo das outras três fontes, dos detalhes/paginação real e dos contatos, além de confirmação contratual de retenção e permissões/limites por fonte. ZAP e OLX têm lacunas documentadas: filtros locais podem excluir anúncios sem atributos; a cobertura é parcial. Identificação de proprietário depende de evidência registrada pelo corretor. Chaves na Mão foi validado ao vivo; as demais fontes continuam com cobertura por fixtures e documentação.
 
-**Preparação para entrega remota:** resolver a divergência dos sete arquivos públicos, revisar/aprovar o SQL aditivo no ambiente de destino e definir ativação/consumo antes do push em main. Esta entrega não inclui migração remota, push ou publicação. Os arquivos de ambiente, contas, dados de teste, snapshot e QA nunca devem ser enviados.
+**Preparação para entrega remota:** os sete arquivos públicos foram conciliados; revisar/aprovar o SQL aditivo no ambiente de destino e configurar a chave nesse ambiente antes de ativar a funcionalidade em produção. Esta entrega não inclui migração remota, push ou publicação. Os arquivos de ambiente, contas, dados de teste, snapshot e QA nunca devem ser enviados.
 
 **Regressões encontradas e corrigidas nesta implementação:** corrida ao salvar a mesma oportunidade, reabertura de anúncio ignorando a preferência de contato, campos do modal editáveis durante confirmação de gravação, rótulos dos selects e contraste do modal fora do escopo visual do portal. Sem alegação de homologação das integrações externas preexistentes.
+## Ativação no original — 14/09/2026
+
+- Prévia ativa a partir da pasta original, em `http://localhost:3116/corretor/captacao`, com a mesma conta e o mesmo banco `captacao_preview` preservados.
+- Consulta real pela interface: Chaves na Mão, São Paulo/SP, venda, primeira página. Retornou **15 anúncios** com links de origem e dados apresentados na tela. Sem fixtures/interceptação nessa consulta. Não foram criados contatos, captações ou imóveis automaticamente.
+- Dashboard GeckoAPI: saldo inicial 100, saldo após a consulta 99; uma requisição consumida. Nenhuma chave criada/rotacionada. Configuração privada fora do Git.
+- 129 testes selecionados de Captação, carteira pública e segurança aprovados no original, mais cinco testes do iniciador local. O iniciador recusa bancos remotos/não identificados como teste e comandos de migração; não transporta os demais segredos de produção para o processo de prévia.
+- Compilação do original e TypeScript usam somente o banco local. `.qa-audit-tmp` foi excluída da checagem de tipos porque contém cópias de outros projetos e verificações antigas; não faz parte do produto.
+- Os arquivos locais de limpeza de contas preexistentes continuam preservados e fora dos commits. Não foram executados.
+
+Para iniciar a prévia no terminal da pasta original:
+
+```powershell
+npm run dev:captacao -- "C:\Users\mateu\Documents\eme-captacao\qa\.env.captacao-local"
+```
+
+O iniciador usa esse arquivo exclusivamente para banco/autenticação de teste e lê apenas a chave Gecko do `.env.local` do projeto. Não usa o banco de produção. Para a validação local desta entrega, utilize esse comando em vez de `npm run dev` sem a seleção do ambiente de teste.
+
+A `main` local contém os commits preparados para `git push origin main`; nenhum push foi executado. A migração da Captação e a chave no ambiente de hospedagem são etapas separadas: não foram aplicadas à produção, e a chave local não será enviada pelo Git.

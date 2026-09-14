@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
+    "dev:captacao": "node scripts/captacao-local.cjs dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
