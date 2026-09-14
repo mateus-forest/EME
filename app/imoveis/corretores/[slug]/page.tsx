@@ -44,7 +44,7 @@ export default async function BrokerProfilePage({
   if (!broker) notFound()
 
   // Carteira ativa publicada pelo corretor no Marketplace.
-  const brokerListings = await getMarketplaceBrokerPropertyCards(broker.id, 3)
+  const brokerListings = await getMarketplaceBrokerPropertyCards(broker.id)
 
   const stats = [
     { icon: Building2, label: 'Imóveis ativos', value: String(broker.activeListings) },
@@ -140,12 +140,12 @@ export default async function BrokerProfilePage({
             <Reveal>
               <SectionHeading
                 title={`Imóveis com ${broker.name.split(' ')[0]}`}
-                support="Uma seleção da carteira ativa deste especialista."
+                support="Todos os imóveis publicados por este especialista no Marketplace."
               />
             </Reveal>
             <div className="mt-8 grid grid-cols-1 items-stretch gap-5 md:grid-cols-2">
               {brokerListings.map((property, i) => (
-                <Reveal key={property.slug} delay={i * 90}>
+                <Reveal key={property.slug} delay={Math.min(i, 5) * 90}>
                   <PropertyCard property={property} />
                 </Reveal>
               ))}

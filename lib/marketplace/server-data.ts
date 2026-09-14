@@ -261,7 +261,7 @@ export async function getMarketplaceBroker(slug: string) {
   return record ? mapMarketplaceBroker(record) : null
 }
 
-export async function getMarketplaceBrokerPropertyCards(brokerId: string, limit = 3) {
+export async function getMarketplaceBrokerPropertyCards(brokerId: string, limit?: number) {
   const records = await prisma.property.findMany({
     where: { ...marketplacePropertyWhere(), brokerId },
     include: marketplacePropertyInclude,

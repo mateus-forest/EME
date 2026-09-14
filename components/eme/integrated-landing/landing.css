@@ -65,3 +65,28 @@
 
 .eme-integrated-landing .hero-bottom,.eme-integrated-landing .motion-button{color:#2d5037}
 @media(max-width:360px){.eme-integrated-landing .mini-row{padding-block:6px}.eme-integrated-landing .mini-top{margin-bottom:6px}.eme-integrated-landing .mini-document{padding-block:12px}}
+
+/* Approved transparent logo: frame its visible bounds without resampling the asset. */
+.eme-integrated-landing .brand-logo img {
+  width: 118.19%; height: auto; max-width: none;
+  left: -9.23%; top: 50%; transform: translateY(-50.88%);
+}
+.eme-integrated-landing .header-login svg { width: 16px; height: 16px; color: var(--green); stroke-width: 1.5; }
+@media (max-width: 760px) {
+  .eme-integrated-landing .header nav .header-login {
+    font-size: 14px; font-weight: 500; line-height: 1.2; letter-spacing: -.01em;
+    min-height: 44px; gap: 7px; padding-inline: 8px; margin-right: -8px;
+  }
+  /* Rebalance the text space without moving the scene, cards or hero boundary. */
+  .eme-integrated-landing .hero-intro { margin: 36px 16px -4px; }
+  .eme-integrated-landing .scene { margin-top: 0; }
+  .eme-integrated-landing .result-headline { top: 22px; }
+}
+
+/* Keep both public access links beside the logo; the signature uses the row below. */
+@media (max-width: 760px) {
+  .eme-integrated-landing .header .brand-lockup { flex: 0 0 91px; width: 91px; min-width: 0; }
+  .eme-integrated-landing .header .brand-caption { width: 175px; max-width: none; }
+  .eme-integrated-landing .header nav { gap: 10px; margin-top: -5px; }
+  .eme-integrated-landing .header nav a.header-marketplace { display: inline-flex; min-height: 44px; }
+}
