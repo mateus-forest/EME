@@ -223,6 +223,7 @@ model UserPasskeyCredential {
 }
 
 model Broker {
+  partnerReferrals PartnerReferral[]
   captacoes Captacao[]
   captacaoQueries CaptacaoQuery[]
   propertyCapacityEvents BrokerPropertyCapacityEvent[]
@@ -1269,4 +1270,45 @@ model CaptacaoQuery {
   broker Broker @relation(fields: [brokerId], references: [id], onDelete: Cascade)
   @@index([brokerId, fingerprint, createdAt])
   @@index([createdAt])
+}
+
+model PartnerReferral {
+  id             String   @id @default(cuid())
+  brokerId       String
+  operationKey   String
+  name           String
+  email          String
+  phone          String   @default("")
+  company        String   @default("")
+  offer          String
+  seats          Int      @default(1)
+  stage          String   @default("NEW")
+  notes          String   @default("")
+  nextAction     String   @default("")
+  followUpAt     DateTime?
+  doNotContact   Boolean  @default(false)
+  version        Int      @default(1)
+  termsVersion   String   @default("2026-09-21")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+  broker         Broker   @relation(fields: [brokerId], references: [id], onDelete: Cascade)
+  activities     PartnerReferralActivity[]
+
+  @@unique([brokerId, email])
+  @@unique([brokerId, operationKey])
+  @@index([brokerId, stage, updatedAt])
+  @@index([brokerId, followUpAt])
+}
+
+model PartnerReferralActivity {
+  id           String   @id @default(cuid())
+  referralId   String
+  operationKey String
+  action       String
+  note         String
+  createdAt    DateTime @default(now())
+  referral     PartnerReferral @relation(fields: [referralId], references: [id], onDelete: Cascade)
+
+  @@unique([referralId, operationKey])
+  @@index([referralId, createdAt])
 }

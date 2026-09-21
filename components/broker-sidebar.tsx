@@ -15,6 +15,7 @@ import {
   CircleDollarSign,
   CreditCard,
   FileSignature,
+  Handshake,
   LayoutDashboard,
   LogOut,
   Store,
@@ -82,6 +83,7 @@ const menuSections: Array<{ label: string; items: MenuItem[] }> = [
       { label: "Compromissos", icon: CalendarDays, href: "/corretor/agenda" },
       { label: "Financeiro", icon: CircleDollarSign, href: "/corretor/financeiro" },
       { label: "Desempenho", icon: BarChart3, href: "/corretor/analytics" },
+      { label: "Parceiros EME", icon: Handshake, href: "/corretor/parceiros" },
     ],
   },
   {
