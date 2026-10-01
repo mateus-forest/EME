@@ -1,3 +1,16 @@
+## Atualização de 01/10/2026 — escritório interativo
+
+A landing pública agora apresenta um escritório com cinco setores (Carteira, Vender, COS, Documentos e Operação). Os modais explicam treze ferramentas e encaminham às rotas existentes via login com `next`. Cabeçalho sem planos, CTAs reais, foco por teclado e preferência por movimento reduzido. Estilos isolados em CSS Module.
+
+Escopo: apresentação da landing e metadados; nenhuma alteração em autenticação, portal, permissões, banco, variáveis ou integrações. A proteção de indexação de Preview e o canonical de Production foram preservados. Nenhuma migração é necessária. O código anterior permanece no histórico Git; reversão por revert deste commit.
+
+Arte: `public/landing-2026/assets/office-ecosystem.webp`, 1536×1024 (~235 KB). Gerada com a ferramenta imagegen a partir do conceito aprovado: escritório claro, câmera elevada e afastada, dois corretores de costas, camisa verde, logo EME na parede; retirada de textos e interfaces embutidos. Conversão WebP para entrega web. Botões e textos são HTML acessível, não fazem parte da imagem.
+
+Validação local isolada: build otimizado e TypeScript; ESLint dos arquivos alterados; Playwright em 320, 375, 390, 430, 768 e 1440 px, com navegação dos setores, destinos reais, ausência de overflow, teclado, modais e acesso às telas de autenticação. APIs interceptadas nos testes de apresentação: estes não comprovam autenticação ou persistência. Safari/iPhone físico não testado.
+
+Prévia compilada em `http://127.0.0.1:3120`, usando banco local de teste e serviços externos desativados. Capturas e logs locais em `.qa-audit-tmp/office-landing-20261001/` (fora do commit). Sem push ou publicação.
+
+---
 # Integração da landing — prévia local
 
 ## Segurança e estado inicial

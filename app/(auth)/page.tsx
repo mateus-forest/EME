@@ -16,8 +16,8 @@ const canonical = (() => {
 })()
 
 export const metadata: Metadata = {
-  title: "EME — Uma estrutura. À sua altura.",
-  description: "O ecossistema do corretor de imóveis. Mais tempo, alcance, agilidade, controle e clareza para o seu negócio.",
+  title: "EME — A estrutura de uma imobiliária nas mãos do corretor",
+  description: "Clientes, imóveis, captação, divulgação e gestão em uma plataforma. Explore o ecossistema do corretor de imóveis e conheça o EME.",
   robots: { index: isProductionDeployment, follow: isProductionDeployment },
   ...(canonical ? { alternates: { canonical } } : {}),
 }
