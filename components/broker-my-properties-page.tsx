@@ -127,7 +127,7 @@ export function BrokerMyPropertiesPage({ initialPropertyId }: { initialPropertyI
     () => properties.filter((property) => isEmeActivePropertyLabel(property.status)).length,
     [properties],
   )
-  const propertyLimit = subscription.propertyLimit ?? 5
+  const propertyLimit = subscription.propertyLimit ?? 20
   const hasReachedLimit = subscription.isProfileResolved && activePropertiesCount >= propertyLimit
   const currentPlanName = getPlanDisplayName(subscription.planName)
   const propertyLimitMessage = `Você atingiu o limite de ${propertyLimit} imóveis ativos do plano ${currentPlanName}.`

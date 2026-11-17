@@ -199,7 +199,7 @@ function BrokerPortalLegacy() {
   const hasReachedLimit =
     subscription.isProfileResolved &&
     !subscription.isUpgraded &&
-    activePropertiesCount >= (subscription.propertyLimit ?? 5)
+    activePropertiesCount >= (subscription.propertyLimit ?? 20)
 
   useEffect(() => {
     let ignore = false

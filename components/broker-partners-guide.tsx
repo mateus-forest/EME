@@ -42,7 +42,7 @@ export function PartnerSimulator() {
 export function PartnerGuide() {
   const [copied, setCopied] = useState("")
   const rows = [
-    ["Free", "R$ 0", "Sem comissão", "—", "5 imóveis · 30 créditos IA/mês"],
+    ["Free", "R$ 0", "Sem comissão", "—", "20 imóveis · 30 créditos IA/mês"],
     ["Pro individual", "R$ 129/mês", "R$ 25,80/mês", "12 meses", "150 imóveis · 500 créditos IA/mês"],
     ["Scale individual", "R$ 389/mês", "R$ 77,80/mês", "12 meses", "1.000 imóveis · 2.000 créditos IA/mês"],
     ["Corretor conveniado", "R$ 119 nos meses 1–3; depois R$ 129", "R$ 23,80; depois R$ 25,80/mês", "12 meses", "Limites do Pro por conta"],

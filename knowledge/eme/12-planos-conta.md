@@ -37,7 +37,7 @@ Conta criada → plano associado → concessão/consumo de créditos → renova�
 ## Regras de negócio
 
 - Configuração atual: Free, EME Pro e EME Scale.
-- Free: 5 imóveis e 30 créditos mensais/iniciais.
+- Free: 20 imóveis e 30 créditos mensais/iniciais.
 - Pro: 150 imóveis e 500 créditos mensais/iniciais.
 - Scale: 1.000 imóveis e 2.000 créditos mensais/iniciais.
 - Valores mensais atuais no código: Free R$ 0; Pro R$ 129; Scale R$ 389.

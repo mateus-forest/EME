@@ -89,7 +89,7 @@ export function BrokerFreePlanLimitModal({
   }
 
   const planName = getPlanDisplayName(snapshot?.currentPlan.name)
-  const propertyLimit = snapshot?.propertyLimits.totalLimit ?? snapshot?.currentPlan.propertyLimit ?? 5
+  const propertyLimit = snapshot?.propertyLimits.totalLimit ?? snapshot?.currentPlan.propertyLimit ?? 20
   const usedProperties = snapshot?.propertyLimits.used ?? propertyLimit
   const hasExpansion = Boolean(snapshot?.propertyLimits.extraLimit && snapshot.propertyLimits.isExpansionActive)
 

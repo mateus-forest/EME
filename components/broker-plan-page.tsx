@@ -164,7 +164,7 @@ const commercialPlanContent = {
     price: "R$ 0",
     description: "Ideal para conhecer o EME e validar sua operação.",
     highlights: [
-      "Até 5 imóveis ativos",
+      "Até 20 imóveis ativos",
       "30 Créditos IA por mês",
       "Sistema Operacional EME completo",
       "Login com PIN e Face ID",

@@ -26,7 +26,7 @@ Capabilities reais: `lead.create`, `lead.find`, `lead.summary`, `lead.summarize`
 
 ## O que é Imóveis [KNOWLEDGE]
 
-Imóvel é o cadastro privado `Property`, criado manualmente, por IA ou importação. Guarda título, tipo, finalidade/status, preço, CEP e endereço, cidade/bairro, descrição, áreas, quartos, banheiros, vagas, imagens, capa, áudio, documentos e dados jurídicos. Para rascunho, título, tipo e finalidade/status são a base mínima; publicação exige readiness da superfície. Estados privados: `DRAFT`, `PUBLISHED` e `PAUSED`. Catálogo usa `published`; Marketplace usa `marketplacePublished`, de forma independente. A API aceita até seis imagens. Planos limitam a carteira a 5, 150 ou 1.000 imóveis. Imóveis alimentam Catálogo, Marketplace, Studio, clientes, propostas, contratos, documentos, compromissos e desempenho.
+Imóvel é o cadastro privado `Property`, criado manualmente, por IA ou importação. Guarda título, tipo, finalidade/status, preço, CEP e endereço, cidade/bairro, descrição, áreas, quartos, banheiros, vagas, imagens, capa, áudio, documentos e dados jurídicos. Para rascunho, título, tipo e finalidade/status são a base mínima; publicação exige readiness da superfície. Estados privados: `DRAFT`, `PUBLISHED` e `PAUSED`. Catálogo usa `published`; Marketplace usa `marketplacePublished`, de forma independente. A API aceita até seis imagens. Planos limitam a carteira a 20, 150 ou 1.000 imóveis. Imóveis alimentam Catálogo, Marketplace, Studio, clientes, propostas, contratos, documentos, compromissos e desempenho.
 
 ## Diagnóstico de Imóveis [DIAGNOSIS]
 
@@ -158,7 +158,7 @@ O runtime do COS já abre e persiste conversas reais, mas não há domínio de c
 
 ## O que é Plano / Créditos [KNOWLEDGE]
 
-Planos atuais: Free, R$ 0, 5 imóveis e 30 créditos mensais; Pro, R$ 129, 150 imóveis e 500 créditos; Scale, R$ 389, 1.000 imóveis e 2.000 créditos. Pacotes de créditos: 250/R$29, 750/R$79, 1.500/R$139 e 3.000/R$249. Pacotes de imóveis: +50/R$49, +100/R$89 e +200/R$159, aplicados somente a assinatura paga elegível e ativa. Créditos mensais são consumidos antes dos extras; o ledger registra concessão, consumo e estorno. Saldo, uso e assinatura são dados atuais e precisam ser consultados. Marketplace é declarado comercialmente para Pro e Scale.
+Planos atuais: Free, R$ 0, 20 imóveis e 30 créditos mensais; Pro, R$ 129, 150 imóveis e 500 créditos; Scale, R$ 389, 1.000 imóveis e 2.000 créditos. Pacotes de créditos: 250/R$29, 750/R$79, 1.500/R$139 e 3.000/R$249. Pacotes de imóveis: +50/R$49, +100/R$89 e +200/R$159, aplicados somente a assinatura paga elegível e ativa. Créditos mensais são consumidos antes dos extras; o ledger registra concessão, consumo e estorno. Saldo, uso e assinatura são dados atuais e precisam ser consultados. Marketplace é declarado comercialmente para Pro e Scale.
 
 ## Diagnóstico de Plano / Créditos [DIAGNOSIS]
 

@@ -116,7 +116,7 @@ export const EME_PLANS = {
     key: "free",
     name: "Plano Free",
     priceCents: 0,
-    propertyLimit: 5,
+    propertyLimit: 20,
     monthlyAiCredits: 30,
     initialAiCredits: 30,
     features: ["core_modules", "assessor_eme"],

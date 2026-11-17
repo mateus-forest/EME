@@ -5,7 +5,7 @@ import { EME_EXTRA_PACKAGES, EME_PLANS, getNextEmePlanKey, resolveEmePlanUpgrade
 type PlanKey = "free" | "pro" | "scale"
 
 const plans = [
-  { key: "free", name: "Plano Free", price: "R$ 0", propertyLimit: 5, monthlyAiCredits: 30, initialAiCredits: 30, features: ["core_modules", "assessor_eme"] },
+  { key: "free", name: "Plano Free", price: "R$ 0", propertyLimit: 20, monthlyAiCredits: 30, initialAiCredits: 30, features: ["core_modules", "assessor_eme"] },
   { key: "pro", name: "Plano EME Pro", price: "R$ 129/mês", propertyLimit: 150, monthlyAiCredits: 500, initialAiCredits: 500, features: ["core_modules", "assessor_eme", "marketplace"] },
   { key: "scale", name: "Plano EME Scale", price: "R$ 389/mês", propertyLimit: 1000, monthlyAiCredits: 2000, initialAiCredits: 2000, features: ["core_modules", "assessor_eme", "marketplace"] },
 ]
@@ -115,7 +115,7 @@ test.describe("Plano do corretor", () => {
   })
 
   test("mantém preços, limites, créditos e pacotes do lançamento", () => {
-    expect(EME_PLANS.free).toMatchObject({ priceCents: 0, propertyLimit: 5, monthlyAiCredits: 30 })
+    expect(EME_PLANS.free).toMatchObject({ priceCents: 0, propertyLimit: 20, monthlyAiCredits: 30 })
     expect(EME_PLANS.pro).toMatchObject({ priceCents: 12900, propertyLimit: 150, monthlyAiCredits: 500 })
     expect(EME_PLANS.scale).toMatchObject({ priceCents: 38900, propertyLimit: 1000, monthlyAiCredits: 2000 })
     expect(Object.values(EME_EXTRA_PACKAGES).map(({ quantity, priceCents }) => [quantity, priceCents])).toEqual([

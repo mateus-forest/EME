@@ -128,7 +128,7 @@ export function BrokerNewPropertyPage({ captureContext }: { captureContext?: Cap
     subscription.isProfileResolved &&
     !isPlanBlocked &&
     !subscription.isUpgraded &&
-    totalPropertiesCount >= (subscription.propertyLimit ?? 5)
+    totalPropertiesCount >= (subscription.propertyLimit ?? 20)
 
   const previewImages = useMemo(() => images, [images])
   const previewNeighborhood = neighborhood.trim() || "Bairro não identificado"
