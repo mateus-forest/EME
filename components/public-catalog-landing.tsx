@@ -18,6 +18,7 @@ import {
   ChevronRight,
   CircleDollarSign,
   Heart,
+  Home,
   MapPin,
   MessageCircle,
   Search,
