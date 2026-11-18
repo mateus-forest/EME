@@ -99,7 +99,7 @@ export function BrokerPageShell({
             <header className={homeStyles.header}>
               <div className={homeStyles.headerBrand}>
                 <SidebarTrigger className="size-11 md:hidden" aria-label="Abrir menu do portal" />
-                <Link href="/corretor" aria-label="EME — início do portal"><Image src="/images/eme-logo-official.png" alt="EME" width={44} height={34} /></Link>
+                <Link href="/corretor" aria-label="EME — início do portal"><Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={44} height={34} /></Link>
                 <span>Portal do corretor</span>
               </div>
               <div className={homeStyles.headerTools}>{resolvedNotificationCenter}</div>
