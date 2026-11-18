@@ -18,13 +18,11 @@ import {
   ChevronRight,
   CircleDollarSign,
   Heart,
-  Home,
   MapPin,
   MessageCircle,
   Search,
   Share2,
   SlidersHorizontal,
-  Sparkles,
 } from "lucide-react"
 
 import type {
@@ -827,8 +825,9 @@ export function PublicCatalogLanding({
       {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
       <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && closeProperty()}>
-        <DialogContent showCloseButton className={cn("eme-catalog-property-dialog box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] p-0 sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl [&_[data-slot=dialog-close]]:fixed [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[max(1rem,env(safe-area-inset-top))] [&_[data-slot=dialog-close]]:z-[90] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-11 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:border [&_[data-slot=dialog-close]]:border-white/80 [&_[data-slot=dialog-close]]:bg-white/90 [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:shadow-lg [&_[data-slot=dialog-close]]:backdrop-blur-xl lg:[&_[data-slot=dialog-close]]:absolute lg:[&_[data-slot=dialog-close]]:right-4 lg:[&_[data-slot=dialog-close]]:top-4", CATALOG_DIALOG_SURFACE_CLASS)}>
+        <DialogContent showCloseButton className={cn("catalog-property-modal eme-catalog-property-dialog box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] p-0 sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl [&_[data-slot=dialog-close]]:fixed [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[max(1rem,env(safe-area-inset-top))] [&_[data-slot=dialog-close]]:z-[90] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-11 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:border [&_[data-slot=dialog-close]]:border-white/80 [&_[data-slot=dialog-close]]:bg-white/90 [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:shadow-lg [&_[data-slot=dialog-close]]:backdrop-blur-xl lg:[&_[data-slot=dialog-close]]:absolute lg:[&_[data-slot=dialog-close]]:right-4 lg:[&_[data-slot=dialog-close]]:top-4", CATALOG_DIALOG_SURFACE_CLASS)}>
           {selectedProperty && (
+            <>
             <div className="eme-catalog-property-dialog-layout block max-h-[94dvh] w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)]">
               <div className="eme-catalog-property-media-pane min-w-0 max-w-full overflow-x-hidden border-b border-white/70 bg-white/34 p-3 backdrop-blur-[12px] sm:p-4 lg:border-r lg:border-b-0 lg:p-5">
                 <DialogTitle className="sr-only">{selectedProperty.title}</DialogTitle>
@@ -884,6 +883,7 @@ export function PublicCatalogLanding({
                 <h3 className="eme-catalog-property-title mt-1.5 break-words text-2xl font-semibold leading-tight tracking-[-0.035em] text-[#050505] sm:text-[1.8rem]">{selectedProperty.title}</h3>
                 <p className="eme-catalog-property-price mt-3 break-words text-2xl font-bold tracking-[-0.03em] text-[#118a3d] sm:text-[1.75rem]">{selectedProperty.price || "Consulte valor"}</p>
                 <div className="eme-catalog-property-features mt-4 flex flex-wrap gap-2">
+                  {selectedProperty.area && selectedProperty.area > 0 ? <Feature icon={Maximize2} label={selectedProperty.area + " m²"} /> : null}
                   {selectedProperty.bedrooms > 0 ? <Feature icon={Bed} label={formatPositiveCountLabel(selectedProperty.bedrooms, "quarto", "quartos")} /> : null}
                   {selectedProperty.bathrooms > 0 ? <Feature icon={Bath} label={formatPositiveCountLabel(selectedProperty.bathrooms, "banheiro", "banheiros")} /> : null}
                   {selectedProperty.parking > 0 ? <Feature icon={Car} label={formatPositiveCountLabel(selectedProperty.parking, "vaga", "vagas")} /> : null}
@@ -914,19 +914,21 @@ export function PublicCatalogLanding({
                     </div>
                   </div>
                 </section>
-                <div className="eme-catalog-property-actions mt-5 flex shrink-0 flex-col gap-2 sm:flex-row">
+
+              </div>
+            </div>
+                <div className="eme-catalog-property-actions catalog-property-contact-bar">
                   <Button type="button" onClick={() => contactProperty(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "eme-catalog-property-action-primary h-11 flex-1 text-base font-semibold")}>
                     <MessageCircle className="size-4" />
                     {catalog.whatsApp ? "Falar no WhatsApp" : "Solicitar contato"}
                   </Button>
-                  <Button type="button" variant="ghost" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_SECONDARY_CTA_CLASS, "h-11")}>Solicitar retorno</Button>
+                  <Button type="button" variant="ghost" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_SECONDARY_CTA_CLASS, "h-11 catalog-callback")}>Solicitar retorno</Button>
                   <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className={cn(CATALOG_SECONDARY_CTA_CLASS, "eme-catalog-property-action-secondary h-11 px-5 text-[#4B5563]")}>
                     <Share2 className="size-4" />
-                    Compartilhar
+                    <span className="sr-only sm:not-sr-only">Compartilhar imóvel</span>
                   </Button>
                 </div>
-              </div>
-            </div>
+            </>
           )}
         </DialogContent>
       </Dialog>
@@ -1115,15 +1117,6 @@ function CatalogImagePlaceholder() {
       <p className="mt-3 text-sm font-medium text-[#6B7280]">Sem imagem cadastrada</p>
     </div>
   )
-}
-
-function getSuggestionIcon(suggestion: string) {
-  const iconClassName = "size-3 text-[#6a6a6a] sm:size-3.5"
-  if (suggestion === "Mais filtros") return <SlidersHorizontal className={iconClassName} />
-  if (suggestion === "Até R$ 1 milhão") return <CircleDollarSign className={iconClassName} />
-  if (suggestion === "Frente mar") return <Sparkles className={iconClassName} />
-  if (suggestion === "Investimento") return <Building2 className={iconClassName} />
-  return <Home className={iconClassName} />
 }
 
 function FilterField({ label, children }: { label: string; children: ReactNode }) {

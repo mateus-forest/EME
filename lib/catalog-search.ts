@@ -73,10 +73,15 @@ const TOKEN_SYNONYMS: Record<string, string[]> = {
   cobertura: ["coberturas", "penthouse"],
   casa: ["casas", "residencia", "residencial"],
   terreno: ["terreno", "lote"],
+  lote: ["terreno"],
   jardim: ["jardins"],
   jardins: ["jardim"],
   locacao: ["aluguel", "alugar", "residencial", "comercial"],
   venda: ["comprar", "compra"],
+  comprar: ["venda"],
+  compra: ["venda"],
+  alugar: ["locacao", "aluguel"],
+  aluguel: ["locacao"],
   investimento: ["investidor", "renda"],
 }
 
