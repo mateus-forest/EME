@@ -18,6 +18,7 @@ import {
 } from "lucide-react"
 
 import { BrokerFreePlanLimitModal } from "@/components/broker-free-plan-limit-modal"
+import { BrokerHome } from "@/components/broker-home"
 import { CosConversationMessageBody, CosMessageAttachments, CosPendingAction } from "@/components/cos-pending-action"
 import { CosPromptComposer } from "@/components/cos-prompt-composer"
 import { CosLaunchPanel } from "@/components/cos-launch-panel"
@@ -125,6 +126,12 @@ function requestAssistantBootstrap() {
 }
 
 export function BrokerPortal({ launchMode = "simple" }: { launchMode?: "simple" | "legacy" }) {
+  const searchParams = useSearchParams()
+  if (!searchParams.get("conversa")?.trim()) return <BrokerHome />
+  return <BrokerAssistantPortal launchMode={launchMode} />
+}
+
+export function BrokerAssistantPortal({ launchMode = "simple" }: { launchMode?: "simple" | "legacy" }) {
   if (launchMode === "simple") return <CosLaunchPanel />
   return <BrokerPortalLegacy />
 }
@@ -184,7 +191,7 @@ function BrokerPortalLegacy() {
 
   useEffect(() => {
     if (requestedConversationId || !activeConversationId || isBootstrappingConversation) return
-    router.replace(`/corretor?conversa=${encodeURIComponent(activeConversationId)}`, { scroll: false })
+    router.replace(`/corretor/cos?conversa=${encodeURIComponent(activeConversationId)}`, { scroll: false })
   }, [activeConversationId, isBootstrappingConversation, requestedConversationId, router])
 
   useEffect(() => {
@@ -529,7 +536,7 @@ function BrokerPortalLegacy() {
                       setPrompt("")
                       setChatFeedback("")
                       const created = await createConversation()
-                      router.replace(`/corretor?conversa=${encodeURIComponent(created.id)}`, { scroll: false })
+                      router.replace(`/corretor/cos?conversa=${encodeURIComponent(created.id)}`, { scroll: false })
                     }}
                     disabled={isSending || isConversationLoading}
                     inputRef={inputRef}

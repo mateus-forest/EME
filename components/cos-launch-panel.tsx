@@ -99,7 +99,7 @@ export function CosLaunchPanel() {
       skipNextLoadConversationIdRef.current = conversationId
       setMessages([{ ...welcome, id: crypto.randomUUID() }])
       setFeedback(null)
-      router.replace(`/corretor?conversa=${encodeURIComponent(conversationId)}`, { scroll: false })
+      router.replace(`/corretor/cos?conversa=${encodeURIComponent(conversationId)}`, { scroll: false })
       notifyConversationRefresh()
       window.setTimeout(() => inputRef.current?.focus(), 0)
       return conversationId

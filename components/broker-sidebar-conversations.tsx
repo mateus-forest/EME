@@ -118,7 +118,7 @@ export function BrokerSidebarConversations({
   }, [conversations, search])
 
   function navigateToConversation(conversationId: string, replace = false) {
-    const href = `/corretor?conversa=${encodeURIComponent(conversationId)}`
+    const href = `/corretor/cos?conversa=${encodeURIComponent(conversationId)}`
     if (replace) router.replace(href, { scroll: false })
     else router.push(href, { scroll: false })
     onNavigate()

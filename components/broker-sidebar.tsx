@@ -51,8 +51,11 @@ type MenuItem = {
 
 const menuSections: Array<{ label: string; items: MenuItem[] }> = [
   {
-    label: "COS",
-    items: [{ label: "COS", icon: LayoutDashboard, href: "/corretor" }],
+    label: "PRINCIPAL",
+    items: [
+      { label: "Início", icon: LayoutDashboard, href: "/corretor" },
+      { label: "Assistente EME", icon: Bot, href: "/corretor/cos" },
+    ],
   },
   {
     label: "CARTEIRA",
@@ -176,7 +179,7 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
     >
       <div className="flex items-center justify-between border-b border-[var(--broker-border)] px-2.5 py-2.5">
         <Link
-          href="/"
+          href="/corretor"
           className={`flex min-w-0 items-center rounded-[var(--broker-radius-sm)] bg-transparent transition-colors hover:bg-[var(--broker-surface-inset)] ${collapsed && !isMobile ? "size-9 justify-center px-0" : "h-9 flex-1 px-2"}`}
         >
           <Image
@@ -211,7 +214,7 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
                   <button
                     type="button"
                     onClick={() => toggleSection(section.label)}
-                    className="flex h-5.5 items-center justify-between rounded-lg px-2.5 text-left text-[9px] font-semibold uppercase tracking-[0.18em] text-[var(--broker-muted-soft)] transition-colors hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)]"
+                    className="flex h-11 items-center justify-between rounded-lg px-2.5 text-left text-[11px] font-semibold uppercase tracking-[0.14em] text-[var(--broker-muted-soft)] transition-colors hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)] md:h-5.5 md:text-[9px]"
                     aria-expanded={sectionOpen}
                   >
                     <span>{section.label}</span>
@@ -227,10 +230,11 @@ export function BrokerSidebar({ variant = "default" }: { variant?: "default" | "
                           asChild
                           isActive={item.href !== "#" && item.href === activeHref}
                           tooltip={item.label}
-                          className={`h-9 rounded-[var(--broker-radius-sm)] border border-transparent text-[13px] font-medium text-[var(--broker-muted)] hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)] data-[active=true]:border-[var(--broker-accent-border)] data-[active=true]:bg-[var(--broker-accent-soft)] data-[active=true]:text-[var(--broker-accent-strong)] ${collapsed && !isMobile ? "px-0" : "px-2.5"}`}
+                          className={`h-11 rounded-[var(--broker-radius-sm)] border border-transparent text-[13px] font-medium text-[var(--broker-muted)] hover:bg-[var(--broker-surface-inset)] hover:text-[var(--broker-ink)] data-[active=true]:border-[var(--broker-accent-border)] data-[active=true]:bg-[var(--broker-accent-soft)] data-[active=true]:text-[var(--broker-accent-strong)] md:h-9 ${collapsed && !isMobile ? "px-0" : "px-2.5"}`}
                         >
                           <Link
                             href={item.href}
+                            onClick={() => { if (isMobile) setOpenMobile(false) }}
                             aria-current={item.href === activeHref ? "page" : undefined}
                             className={`flex w-full items-center ${collapsed && !isMobile ? "justify-center gap-0" : "gap-2.5"}`}
                           >

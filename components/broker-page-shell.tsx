@@ -3,6 +3,8 @@
 import { useMemo } from "react"
 import type { CSSProperties, ReactNode } from "react"
 import Link from "next/link"
+import Image from "next/image"
+import homeStyles from "./broker-home.module.css"
 import { Plus, Search } from "lucide-react"
 
 import { NotificationCenter } from "@/components/notification-center"
@@ -19,7 +21,7 @@ type BrokerPageShellProps = {
   title: string
   eyebrow?: string
   subtitle?: ReactNode
-  variant?: "default" | "cos"
+  variant?: "default" | "cos" | "home"
   searchPlaceholder?: string
   searchValue?: string
   onSearchChange?: (value: string) => void
@@ -49,6 +51,7 @@ export function BrokerPageShell({
   children,
 }: BrokerPageShellProps) {
   const isCosVariant = variant === "cos"
+  const isHomeVariant = variant === "home"
   const hasSearchArea = searchPlaceholder || headerControls
   const hasPrimaryAction = Boolean(primaryActionLabel)
   const { profile } = useBrokerProfile({ enabled: !isCosVariant })
@@ -85,14 +88,23 @@ export function BrokerPageShell({
       }
     >
       <div
-        className={`broker-portal-scope pwa-safe-shell relative w-full overflow-hidden text-[var(--broker-ink)] ${
+        className={`broker-portal-scope pwa-safe-shell relative w-full overflow-hidden text-[var(--broker-ink)] ${isHomeVariant ? homeStyles.shell : ""} ${
           isCosVariant
             ? "h-full min-h-0 bg-[radial-gradient(circle_at_top_left,rgba(214,244,229,.52),transparent_38%),linear-gradient(180deg,#fbfcfa,#f4f7f4)] md:bg-none md:bg-[#f4f1eb]"
             : "min-h-svh bg-[var(--broker-canvas)]"
         }`}
       >
         <div className={`relative z-0 flex w-full flex-col ${isCosVariant ? "h-full min-h-0" : "min-h-svh"}`}>
-          {!isCosVariant ? (
+          {isHomeVariant ? (
+            <header className={homeStyles.header}>
+              <div className={homeStyles.headerBrand}>
+                <SidebarTrigger className="size-11 md:hidden" aria-label="Abrir menu do portal" />
+                <Link href="/corretor" aria-label="EME — início do portal"><Image src="/images/eme-logo-official.png" alt="EME" width={44} height={34} /></Link>
+                <span>Portal do corretor</span>
+              </div>
+              <div className={homeStyles.headerTools}>{resolvedNotificationCenter}</div>
+            </header>
+          ) : !isCosVariant ? (
             <header className="sticky top-0 z-20 border-b border-[var(--broker-border)] bg-white/92 backdrop-blur-xl">
               <div className="px-3.5 py-2.5 sm:px-4 lg:px-5">
                 <div className="flex flex-col gap-2.5 lg:flex-row lg:items-center lg:justify-between lg:gap-5">
@@ -183,7 +195,7 @@ export function BrokerPageShell({
               className={
                 isCosVariant
                   ? "min-h-0 min-w-0 flex-1 overflow-hidden rounded-none border-y-0 border-r border-l border-[var(--broker-border)] bg-transparent shadow-none"
-                  : "min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none md:rounded-[var(--broker-radius-lg)] md:border md:border-[var(--broker-border)] md:bg-white/82 md:shadow-[var(--broker-shadow-sm)]"
+                  : isHomeVariant ? "min-w-0 flex-1 overflow-hidden bg-transparent" : "min-w-0 flex-1 overflow-hidden rounded-none border-0 bg-transparent shadow-none md:rounded-[var(--broker-radius-lg)] md:border md:border-[var(--broker-border)] md:bg-white/82 md:shadow-[var(--broker-shadow-sm)]"
               }
             >
               <div
