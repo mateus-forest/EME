@@ -1,11 +1,15 @@
 "use client"
+import { analyzeSearch, rankProperties, hasActiveAdvancedFilters, EMPTY_CATALOG_FILTERS, type CatalogAdvancedFilters } from "@/lib/catalog-search"
 import { trackJourney } from "@/lib/journey/browser"
 
 import type { ReactNode } from "react"
-import { useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import Link from "next/link"
 import {
   Bath,
+  ArrowUpRight,
+  Maximize2,
+  X,
   Bed,
   Building2,
   Car,
@@ -29,10 +33,8 @@ import type {
 } from "@/lib/public-catalog"
 import { createPublicLead } from "@/lib/lead-client"
 import {
-  buildAgencyCatalogListingPath,
   buildAgencyCatalogPath,
   buildAgencyCatalogUrl,
-  buildBrokerCatalogListingPath,
   buildBrokerCatalogPath,
   buildBrokerCatalogUrl,
 } from "@/lib/public-catalog-url"
@@ -75,6 +77,7 @@ type CatalogProperty = {
   neighborhood: string
   price: string
   priceValue: number
+  area?: number
   bedrooms: number
   bathrooms: number
   parking: number
@@ -132,26 +135,6 @@ function formatCurrencyFromCents(value: number) {
   return (value / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })
 }
 
-type CatalogAdvancedFilters = {
-  type: string
-  city: string
-  neighborhood: string
-  bedrooms: string
-  parking: string
-  maxPrice: string
-  feature: string
-}
-
-const quickSuggestions = [
-  "Alto padrão",
-  "Até R$ 1 milhão",
-  "Coberturas",
-  "Frente mar",
-  "Investimento",
-  "Casas",
-  "Mais filtros",
-]
-
 export function PublicCatalogLanding({
   kind,
   slug,
@@ -161,16 +144,11 @@ export function PublicCatalogLanding({
 }: PublicCatalogLandingProps) {
   const { theme } = useCatalogTheme()
   const [search, setSearch] = useState("")
+  const [favoritesOnly, setFavoritesOnly] = useState(false)
+  const [sortOrder, setSortOrder] = useState("relevance")
+  const propertyHistoryRef = useRef(false)
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false)
-  const [advancedFilters, setAdvancedFilters] = useState<CatalogAdvancedFilters>({
-    type: "",
-    city: "",
-    neighborhood: "",
-    bedrooms: "",
-    parking: "",
-    maxPrice: "",
-    feature: "",
-  })
+  const [advancedFilters, setAdvancedFilters] = useState<CatalogAdvancedFilters>(EMPTY_CATALOG_FILTERS)
   const [selectedProperty, setSelectedProperty] = useState<CatalogProperty | null>(null)
   const [leadDraft, setLeadDraft] = useState<LeadDraft | null>(null)
   const [currentImageIndex, setCurrentImageIndex] = useState(0)
@@ -187,15 +165,20 @@ export function PublicCatalogLanding({
   const properties = useMemo(() => normalizeProperties(catalog), [catalog])
   const searchAnalysis = useMemo(() => analyzeSearch(search), [search])
   const visibleProperties = useMemo(
-    () => rankProperties(properties, searchAnalysis, advancedFilters),
-    [advancedFilters, properties, searchAnalysis],
+    () => {
+      const ranked = rankProperties(properties, searchAnalysis, advancedFilters)
+        .filter(({ property }) => !favoritesOnly || favoriteIds.has(property.id))
+      if (sortOrder === "price-asc" || sortOrder === "price-desc") ranked.sort((a, b) => {
+        if (!a.property.priceValue) return b.property.priceValue ? 1 : 0
+        if (!b.property.priceValue) return -1
+        return (a.property.priceValue - b.property.priceValue) * (sortOrder === "price-asc" ? 1 : -1)
+      })
+      return ranked
+    },
+    [advancedFilters, properties, searchAnalysis, favoritesOnly, favoriteIds, sortOrder],
   )
   const publicPath =
     kind === "broker" ? buildBrokerCatalogPath(catalog.slug || slug) : buildAgencyCatalogPath(catalog.slug || slug)
-  const listingPath =
-    kind === "broker"
-      ? buildBrokerCatalogListingPath(catalog.slug || slug)
-      : buildAgencyCatalogListingPath(catalog.slug || slug)
   const catalogUrl =
     kind === "broker" ? buildBrokerCatalogUrl(catalog.slug || slug) : buildAgencyCatalogUrl(catalog.slug || slug)
   const image = (selectedProperty?.images[currentImageIndex] ?? selectedProperty?.images[0] ?? "").trim()
@@ -204,9 +187,13 @@ export function PublicCatalogLanding({
     [properties],
   )
   const neighborhoods = useMemo(
-    () => Array.from(new Set(properties.map((property) => property.neighborhood).filter(Boolean))).sort(),
-    [properties],
+    () => Array.from(new Set(properties.filter((property) => !advancedFilters.city || property.city === advancedFilters.city).map((property) => property.neighborhood).filter(Boolean))).sort(),
+    [properties, advancedFilters.city],
   )
+  const propertyTypes = useMemo(() => [...new Set(properties.map((property) => property.type))].sort((a, b) => a.localeCompare(b, "pt-BR")), [properties])
+  const quickSuggestions = propertyTypes.slice(0, 4)
+  const hasFilters = Boolean(search.trim() || hasActiveAdvancedFilters(advancedFilters) || favoritesOnly)
+
   const priceRange = getPriceRangeLabel(properties)
   const avatarUrl = kind === "broker" ? (catalog as PublicBrokerCatalogData).photoUrl : (catalog as PublicAgencyCatalogData).logoUrl
   const creci = kind === "broker" ? (catalog as PublicBrokerCatalogData).creci : ""
@@ -226,6 +213,48 @@ export function PublicCatalogLanding({
       delete document.documentElement.dataset.emeCatalogTheme
     }
   }, [kind, theme])
+
+  useEffect(() => {
+    const restoreProperty = () => {
+      const hash = window.location.hash
+      const id = hash.startsWith("#imovel-") ? hash.slice(8) : ""
+      setSelectedProperty(properties.find((property) => property.id === id) ?? null)
+      setCurrentImageIndex(0)
+    }
+    restoreProperty()
+    window.addEventListener("popstate", restoreProperty)
+    window.addEventListener("hashchange", restoreProperty)
+    return () => {
+      window.removeEventListener("popstate", restoreProperty)
+      window.removeEventListener("hashchange", restoreProperty)
+    }
+  }, [properties])
+
+  const openProperty = useCallback((property: CatalogProperty) => {
+    const hash = "#imovel-" + property.id
+    if (window.location.hash !== hash) {
+      window.history.pushState({ ...window.history.state, emeCatalogProperty: true }, "", hash)
+      propertyHistoryRef.current = true
+    }
+    setSelectedProperty(property)
+    setCurrentImageIndex(0)
+    void trackCatalogEvent({ eventType: "property_view", catalogSlug: catalog.slug || slug, catalogType: kind, propertyId: property.id })
+  }, [catalog.slug, slug, kind])
+
+  function closeProperty() {
+    setSelectedProperty(null)
+    if (propertyHistoryRef.current && window.history.state?.emeCatalogProperty) {
+      window.history.back()
+    } else if (window.location.hash.startsWith("#imovel-")) {
+      window.history.replaceState(window.history.state, "", window.location.pathname + window.location.search)
+    }
+  }
+
+  function clearFilters() {
+    setSearch("")
+    setAdvancedFilters(EMPTY_CATALOG_FILTERS)
+    setFavoritesOnly(false)
+  }
 
   useEffect(() => {
     if (!selectedProperty) return
@@ -265,14 +294,7 @@ export function PublicCatalogLanding({
       if (typeof propertyId !== "string") return
       const property = properties.find((item) => item.id === propertyId)
       if (!property) return
-      setSelectedProperty(property)
-      setCurrentImageIndex(0)
-      void trackCatalogEvent({
-        eventType: "property_view",
-        catalogSlug: catalog.slug || slug,
-        catalogType: kind,
-        propertyId: property.id,
-      })
+      openProperty(property)
     }
 
     window.addEventListener("eme:catalog-open-property", openAssistantProperty)
@@ -282,7 +304,7 @@ export function PublicCatalogLanding({
       window.removeEventListener("eme:catalog-open-property", openAssistantProperty)
       window.removeEventListener("eme:catalog-open-contact", openAssistantContact)
     }
-  }, [catalog.slug, kind, properties, slug])
+  }, [kind, properties, openProperty])
 
   function showFeedback(message: string) {
     setFeedback(message)
@@ -298,21 +320,15 @@ export function PublicCatalogLanding({
 
       await navigator.clipboard.writeText(url)
       showFeedback("Link copiado")
-    } catch {
-      await navigator.clipboard.writeText(url).catch(() => null)
-      showFeedback("Link copiado")
+    } catch (error) {
+      if (error instanceof DOMException && error.name === "AbortError") return
+      try {
+        await navigator.clipboard.writeText(url)
+        showFeedback("Link copiado")
+      } catch {
+        showFeedback("Não foi possível copiar. Tente compartilhar novamente.")
+      }
     }
-  }
-
-  function openProperty(property: CatalogProperty) {
-    setSelectedProperty(property)
-    setCurrentImageIndex(0)
-    void trackCatalogEvent({
-      eventType: "property_view",
-      catalogSlug: catalog.slug || slug,
-      catalogType: kind,
-      propertyId: property.id,
-    })
   }
 
   function submitSearch() {
@@ -326,6 +342,12 @@ export function PublicCatalogLanding({
       query,
       resultCount: visibleProperties.length,
     })
+  }
+
+  function contactProperty(property: CatalogProperty) {
+    if (!catalog.whatsApp) { openLeadModal(property); return }
+    window.open(createWhatsAppUrl(catalog.whatsApp, "Olá, tenho interesse no imóvel " + property.title + ": " + catalogUrl + "#imovel-" + property.id), "_blank", "noopener,noreferrer")
+    void trackCatalogEvent({ eventType: "whatsapp_click", catalogSlug: catalog.slug || slug, catalogType: kind, propertyId: property.id })
   }
 
   function openLeadModal(property: CatalogProperty) {
@@ -389,13 +411,13 @@ export function PublicCatalogLanding({
       return
     }
 
+    if (normalizePhone(leadDraft.phone).length < 10) {
+      setLeadFeedback("Informe seu telefone com DDD para receber o retorno.")
+      return
+    }
+
     setIsSavingLead(true)
     setLeadFeedback("")
-
-    const propertyUrl = leadDraft.property ? `${catalogUrl}#imovel-${leadDraft.property.id}` : catalogUrl
-    const whatsappMessage = leadDraft.property
-      ? `Olá, tenho interesse no imóvel ${leadDraft.property.title}: ${propertyUrl}. Meu nome é ${name}.`
-      : `${leadDraft.message.trim() || `Olá, conheci seu catálogo no EME e quero falar com o corretor: ${catalogUrl}`} Meu nome é ${name}.`
 
     try {
       await createPublicLead({
@@ -410,20 +432,8 @@ export function PublicCatalogLanding({
         intent: searchAnalysis.intent,
       })
 
-      if (!catalog.whatsApp) {
-        setLeadFeedback("Interesse registrado. O responsável pelo catálogo receberá seu contato.")
-        setLeadDraft(null)
-        return
-      }
-
-      window.open(createWhatsAppUrl(catalog.whatsApp, whatsappMessage), "_blank", "noopener,noreferrer")
-      void trackCatalogEvent({
-        eventType: "whatsapp_click",
-        catalogSlug: catalog.slug || slug,
-        catalogType: kind,
-        propertyId: leadDraft.property?.id,
-      })
       setLeadDraft(null)
+      showFeedback("Solicitação enviada. O corretor recebeu seus dados para retornar.")
     } catch (caughtError) {
       setLeadFeedback(caughtError instanceof Error ? caughtError.message : "Não foi possível registrar seu interesse.")
     } finally {
@@ -434,7 +444,7 @@ export function PublicCatalogLanding({
   return (
     <main
       data-catalog-theme={kind === "broker" ? theme : undefined}
-      className={kind === "broker" ? CATALOG_PAGE_BACKGROUND_CLASS : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}
+      className={kind === "broker" ? cn(CATALOG_PAGE_BACKGROUND_CLASS, "catalog-refined") : "min-h-screen overflow-x-hidden bg-[#f6f1e9] px-0 py-0 font-[family-name:var(--font-geist-sans)] text-[#1f2937] sm:bg-[#f8f5f1] sm:px-6 sm:py-6 lg:px-8 lg:py-8"}
     >
       {brokerCatalog ? (
         <BrokerCatalogHeader
@@ -450,7 +460,7 @@ export function PublicCatalogLanding({
         </div>
       ) : null}
 
-      <div className={kind === "broker" ? cn("mx-auto grid max-w-[1240px] min-w-0 gap-5 px-3 pb-8 pt-4 sm:gap-6 sm:px-5 xl:px-0", listingOnly && "pt-6") : "mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12"}>
+      <div className={kind === "broker" ? cn("catalog-content", listingOnly && "pt-6") : "mx-auto grid max-w-[1360px] min-w-0 gap-6 px-4 py-4 sm:gap-10 sm:px-0 sm:py-0 lg:gap-12"}>
         {showPortalBackButton ? (
           <div className="sticky top-3 z-30 flex justify-start">
             <Button asChild variant="ghost" className="h-10 rounded-full border border-black/[0.06] bg-white/90 px-4 text-sm text-[#4B5563] shadow-sm backdrop-blur-md hover:bg-white hover:text-[#050505]">
@@ -461,6 +471,7 @@ export function PublicCatalogLanding({
 
         {brokerCatalog && !listingOnly ? (
           <BrokerProfileHero
+            compact={!profileOnly}
             catalog={brokerCatalog}
             priceRange={brokerCatalog.priceRange || priceRange}
             onShare={() => void shareUrl(catalogUrl, catalog.displayName, "Veja este catálogo de imóveis")}
@@ -545,65 +556,28 @@ export function PublicCatalogLanding({
           <BrokerAboutContent catalog={brokerCatalog} onContact={() => setContactOpen(true)} />
         ) : null}
 
-        {!profileOnly && !listingOnly ? (
-        <section className={kind === "broker" ? "eme-catalog-search-surface relative overflow-hidden rounded-[1.15rem] border border-white/80 bg-white/70 px-5 py-6 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_10px_26px_rgba(57,50,41,.07)] backdrop-blur-[18px] sm:px-8 sm:py-8 lg:px-10" : "rounded-[2rem] bg-white px-4 py-4 shadow-[0_18px_46px_rgba(15,23,42,0.05)] sm:px-7 sm:py-8 lg:px-12 lg:py-10"}>
-          <div className="mx-auto max-w-none">
-            <h2 className="text-[1.3rem] font-semibold tracking-[-0.045em] text-[#111111] sm:text-[2rem]">
-              Encontre seu próximo imóvel
-            </h2>
-            <p className="mt-1.5 text-[13px] leading-5 text-[#6b6b6b] sm:mt-2 sm:text-[0.98rem] sm:leading-7">
-              Busque por bairro, cidade ou característica.
-            </p>
-
-            <div className="mt-4 grid gap-3 lg:grid-cols-[minmax(0,1fr)_160px]">
-              <div className="relative min-w-0">
-                <Search className="pointer-events-none absolute left-4 top-1/2 size-[18px] -translate-y-1/2 text-[#9a9a9a] sm:left-5 sm:size-5" />
-                <Input
-                  value={search}
-                  onChange={(event) => setSearch(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter") submitSearch()
-                  }}
-                  placeholder="Ex.: apartamento em Porto Alegre até 900 mil com 2 quartos e vaga"
-                  className="eme-catalog-search-input h-[3rem] rounded-[0.85rem] border-[#e7e3dc] bg-white/78 pl-11 pr-4 text-[13px] text-[#111111] shadow-[0_6px_15px_rgba(55,49,41,.07)] placeholder:text-[#7f817f] focus-visible:ring-1 focus-visible:ring-[#d9d2c6] sm:h-[3.55rem] sm:pl-12 sm:text-[15px]"
-                />
-              </div>
-              <Button
-                type="button"
-                onClick={submitSearch}
-                className="h-[3rem] rounded-[0.85rem] bg-[#153d30] px-5 text-sm font-medium text-white shadow-[0_10px_22px_rgba(21,61,48,.16)] hover:bg-[#102f25] sm:h-[3.55rem] sm:px-6 sm:text-[15px]"
-              >
-                Buscar
-                <ChevronRight className="size-4 text-[#c99b49]" />
-              </Button>
+        {!profileOnly ? (
+        <section className="catalog-search" aria-label="Buscar imóveis">
+          <div>
+            <div className="catalog-search-heading"><h2>Encontre seu próximo endereço.</h2><p>Imóveis selecionados para você.</p></div>
+            <form className="catalog-search-form" onSubmit={(event) => { event.preventDefault(); submitSearch(); document.getElementById("imoveis")?.scrollIntoView({ block: "start", behavior: "auto" }) }}>
+              <Search size={19} aria-hidden="true" />
+              <input aria-label="Buscar imóveis" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Cidade, bairro ou o que você procura" />
+              {search ? <button type="button" className="catalog-icon" aria-label="Limpar busca" onClick={() => setSearch("")}><X size={16} /></button> : null}
+              <button type="submit" className="catalog-search-submit" aria-label="Buscar"><Search size={19} /><span>Buscar</span></button>
+            </form>
+            <div className="catalog-filter-bar">
+              <button type="button" className="catalog-filter-toggle" aria-expanded={showAdvancedFilters} aria-controls="catalog-filters" onClick={() => setShowAdvancedFilters((current) => !current)}><SlidersHorizontal size={15} /> Filtros {hasActiveAdvancedFilters(advancedFilters) ? <span className="catalog-filter-dot" /> : null}</button>
+              {quickSuggestions.map((type) => <button key={type} type="button" aria-pressed={advancedFilters.type === type} onClick={() => setAdvancedFilters((current) => ({ ...current, type: current.type === type ? "" : type }))}>{type}</button>)}
+              <button type="button" aria-pressed={favoritesOnly} onClick={() => setFavoritesOnly((current) => !current)}><Heart size={15} /> Salvos{favoriteIds.size ? " (" + favoriteIds.size + ")" : ""}</button>
             </div>
-
-            <div className="mt-3 grid grid-cols-6 gap-1.5 sm:flex sm:flex-wrap">
-              {quickSuggestions.map((suggestion, index) => (
-                <button
-                  key={suggestion}
-                  type="button"
-                  onClick={() => {
-                    if (suggestion === "Mais filtros") {
-                      setShowAdvancedFilters((current) => !current)
-                      return
-                    }
-
-                    setSearch(suggestion)
-                  }}
-                  className={cn(
-                      "eme-catalog-filter-chip inline-flex h-7 items-center justify-center gap-1 whitespace-nowrap rounded-full border border-[#e6e2db] bg-white/64 px-2 text-[10px] font-medium text-[#303330] shadow-[0_3px_9px_rgba(53,47,39,.05)] transition hover:border-[#d8d1c7] hover:bg-white/82 sm:h-8 sm:px-3 sm:text-xs",
-                    index < 4 ? "col-span-3" : "col-span-2",
-                  )}
-                >
-                  {getSuggestionIcon(suggestion)}
-                  {suggestion}
-                </button>
-              ))}
-            </div>
-
             {showAdvancedFilters ? (
-              <div className="eme-catalog-filter-panel mt-5 grid gap-4 rounded-[1.4rem] border border-[#ece5dc] bg-[#fcfbf8] p-5 lg:grid-cols-4">
+              <div id="catalog-filters" className="eme-catalog-filter-panel mt-5 grid gap-4 rounded-[1.4rem] border border-[#ece5dc] bg-[#fcfbf8] p-5 lg:grid-cols-4">
+                <FilterField label="Finalidade">
+                  <select aria-label="Finalidade" value={advancedFilters.purpose} onChange={(event) => setAdvancedFilters((current) => ({ ...current, purpose: event.target.value }))} className="h-11 w-full rounded-xl border border-black/10 bg-white px-3 text-sm text-[#111111]">
+                    <option value="">Comprar ou alugar</option><option value="Venda">Comprar</option><option value="Locação">Alugar</option>
+                  </select>
+                </FilterField>
                 <FilterField label="Tipo">
                   <select
                     aria-label="Tipo do imóvel"
@@ -612,16 +586,14 @@ export function PublicCatalogLanding({
                     className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
                   >
                     <option value="">Todos</option>
-                    <option value="Apartamento">Apartamento</option>
-                    <option value="Casa">Casa</option>
-                    <option value="Comercial">Comercial</option>
+                    {propertyTypes.map((type) => <option key={type} value={type}>{type}</option>)}
                   </select>
                 </FilterField>
                 <FilterField label="Cidade">
                   <select
                     aria-label="Cidade"
                     value={advancedFilters.city}
-                    onChange={(event) => setAdvancedFilters((current) => ({ ...current, city: event.target.value }))}
+                    onChange={(event) => setAdvancedFilters((current) => ({ ...current, city: event.target.value, neighborhood: "" }))}
                     className="h-11 w-full rounded-xl border border-black/[0.08] bg-white px-3 text-sm text-[#111111] outline-none"
                   >
                     <option value="">Todas</option>
@@ -651,6 +623,7 @@ export function PublicCatalogLanding({
                 </FilterField>
                 <FilterField label="Preço máximo">
                   <Input
+                    aria-label="Preço máximo"
                     value={advancedFilters.maxPrice}
                     onChange={(event) =>
                       setAdvancedFilters((current) => ({ ...current, maxPrice: event.target.value }))
@@ -661,6 +634,7 @@ export function PublicCatalogLanding({
                 </FilterField>
                 <FilterField label="Dormitórios">
                   <Input
+                    aria-label="Dormitórios"
                     value={advancedFilters.bedrooms}
                     onChange={(event) =>
                       setAdvancedFilters((current) => ({ ...current, bedrooms: event.target.value }))
@@ -671,6 +645,7 @@ export function PublicCatalogLanding({
                 </FilterField>
                 <FilterField label="Vagas">
                   <Input
+                    aria-label="Vagas"
                     value={advancedFilters.parking}
                     onChange={(event) =>
                       setAdvancedFilters((current) => ({ ...current, parking: event.target.value }))
@@ -681,6 +656,7 @@ export function PublicCatalogLanding({
                 </FilterField>
                 <FilterField label="Características">
                   <Input
+                    aria-label="Características"
                     value={advancedFilters.feature}
                     onChange={(event) =>
                       setAdvancedFilters((current) => ({ ...current, feature: event.target.value }))
@@ -692,7 +668,7 @@ export function PublicCatalogLanding({
                 <div className="flex items-end gap-3">
                   <Button
                     type="button"
-                    onClick={submitSearch}
+                    onClick={() => { submitSearch(); setShowAdvancedFilters(false) }}
                     className="h-11 rounded-xl bg-[#3d9751] px-5 text-sm font-medium text-white hover:bg-[#347f46]"
                   >
                     Aplicar filtros
@@ -700,17 +676,7 @@ export function PublicCatalogLanding({
                   <Button
                     type="button"
                     variant="ghost"
-                    onClick={() =>
-                      setAdvancedFilters({
-                        type: "",
-                        city: "",
-                        neighborhood: "",
-                        bedrooms: "",
-                        parking: "",
-                        maxPrice: "",
-                        feature: "",
-                      })
-                    }
+                    onClick={clearFilters}
                     className="h-11 rounded-xl border border-[#e6dfd7] bg-white px-5 text-sm font-medium text-[#2f2f2f] hover:bg-[#faf8f5]"
                   >
                     Limpar
@@ -719,51 +685,41 @@ export function PublicCatalogLanding({
               </div>
             ) : null}
 
-            {search.trim() || hasActiveAdvancedFilters(advancedFilters) ? (
-              <p className="mt-4 text-sm text-[#6B7280]">
-                {visibleProperties.length} imóvel{visibleProperties.length === 1 ? "" : "is"} encontrado{visibleProperties.length === 1 ? "" : "s"}
-              </p>
-            ) : null}
+            {hasFilters ? <div className="catalog-active-filters" aria-live="polite">
+              {searchAnalysis.maxPrice ? <span>Até {formatCurrencyFromCents(searchAnalysis.maxPrice)}</span> : null}
+              {searchAnalysis.bedrooms ? <span>{searchAnalysis.bedrooms}+ quartos</span> : null}
+              {Object.entries(advancedFilters).filter(([, value]) => value).map(([key, value]) => <button type="button" key={key} onClick={() => setAdvancedFilters((current) => ({ ...current, [key]: "" }))} aria-label={"Remover filtro " + value}>{value}<X size={12} /></button>)}
+              <button type="button" onClick={clearFilters}>Limpar tudo</button>
+            </div> : null}
           </div>
         </section>
         ) : null}
 
+        {!profileOnly ? <div className="catalog-results-heading">
+          <h2 aria-live="polite">{visibleProperties.length} {visibleProperties.length === 1 ? "imóvel" : "imóveis"}{favoritesOnly ? " salvo" + (visibleProperties.length === 1 ? "" : "s") : visibleProperties.length === 1 ? " disponível" : " disponíveis"}</h2>
+          <label><span className="sr-only">Ordenar imóveis</span><select aria-label="Ordenar imóveis" value={sortOrder} onChange={(event) => setSortOrder(event.target.value)}><option value="relevance">Relevância</option><option value="price-asc">Menor preço</option><option value="price-desc">Maior preço</option></select></label>
+        </div> : null}
         {!profileOnly ? (visibleProperties.length > 0 ? (
           <>
-            <div className={kind === "broker" ? "flex items-center justify-between gap-4 px-4" : "flex items-center justify-between gap-4"}>
-              <h2 className="text-[1.65rem] font-semibold tracking-[-0.04em] text-[#111111] sm:text-[2rem]">
-                {listingOnly ? "Todos os imóveis" : "Imóveis em destaque"}
-              </h2>
-              {!listingOnly ? (
-                <Link
-                  href={listingPath}
-                  className="inline-flex items-center gap-2 text-sm font-medium text-[#343632] transition hover:text-[#0d7137] sm:text-[15px]"
-                >
-                  {kind === "broker" ? "Ver todos os imóveis" : "Ver todos"}
-                  {kind === "broker" ? <ChevronRight className="size-4 text-[#b38a3b]" /> : null}
-                </Link>
-              ) : null}
-            </div>
-
-            <section id="imoveis" className={kind === "broker" ? "grid min-w-0 scroll-mt-32 auto-rows-fr grid-cols-1 gap-5 px-4 md:grid-cols-2 lg:grid-cols-3" : "grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2"}>
-              {visibleProperties.map(({ property, matchLabel }) => (
+            <section id="imoveis" className={kind === "broker" ? "catalog-grid grid min-w-0 scroll-mt-24 auto-rows-fr grid-cols-1 gap-5 md:grid-cols-2 lg:grid-cols-3" : "grid min-w-0 grid-cols-1 gap-7 xl:grid-cols-2"}>
+              {visibleProperties.map(({ property }, index) => (
                 <article
                   key={property.id}
                   id={`imovel-${property.id}`}
-                  className={kind === "broker" ? "eme-catalog-property-card flex h-full min-w-0 flex-col overflow-hidden rounded-[1rem] border border-[#e9e5dd] bg-white/76 shadow-[0_8px_22px_rgba(57,50,41,.07)] backdrop-blur-[12px] transition-all duration-300 hover:-translate-y-1 hover:shadow-[0_13px_28px_rgba(57,50,41,.10)]" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
+                  className={kind === "broker" ? "eme-catalog-property-card catalog-property-card" : "min-w-0 overflow-hidden rounded-[1.8rem] border border-[#ece4db] bg-white shadow-[0_18px_42px_rgba(15,23,42,0.055)] transition-all duration-300 hover:-translate-y-1.5 hover:shadow-[0_28px_60px_rgba(15,23,42,0.09)]"}
                 >
                   <div className="relative">
                   <button type="button" onClick={() => openProperty(property)} className="block w-full text-left">
-                    <div className={kind === "broker" ? "relative aspect-[2.2/1] overflow-hidden bg-[#eef2f0]" : "relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]"}>
+                    <div className={kind === "broker" ? "catalog-property-photo relative aspect-[4/3] overflow-hidden bg-[#eef2f0]" : "relative aspect-[2.16/1] overflow-hidden bg-[#eef2f0]"}>
                       {property.images[0]?.trim() ? (
                         // eslint-disable-next-line @next/next/no-img-element
-                        <img src={property.images[0].trim()} alt={property.title} loading="lazy" decoding="async" onError={(event) => { event.currentTarget.style.display = "none" }} className="h-full w-full object-cover transition duration-700 hover:scale-[1.03]" />
+                        <img src={property.images[0].trim()} alt={property.title} loading={index === 0 ? "eager" : "lazy"} decoding="async" onError={(event) => { event.currentTarget.style.display = "none" }} className="h-full w-full object-cover transition-transform duration-300 motion-reduce:transition-none" />
                       ) : (
                         <CatalogImagePlaceholder />
                       )}
                       <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/28 via-black/10 to-transparent" />
                       <div className="eme-catalog-card-badge absolute left-4 top-4 rounded-full border border-white/70 bg-white/82 px-3.5 py-1.5 text-xs font-medium text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_4px_10px_rgba(15,23,42,.07)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58">
-                        {matchLabel}
+                        {property.purpose || "Imóvel"}
                       </div>
                     </div>
                   </button>
@@ -772,17 +728,17 @@ export function PublicCatalogLanding({
                     onClick={() => toggleFavorite(property.id)}
                     aria-label={favoriteIds.has(property.id) ? `Remover ${property.title} dos favoritos` : `Favoritar ${property.title}`}
                     aria-pressed={favoriteIds.has(property.id)}
-                    className={kind === "broker" ? "eme-catalog-card-action absolute right-3 top-3 flex size-9 items-center justify-center rounded-full border border-white/65 bg-white/82 text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(15,23,42,.10)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
+                    className={kind === "broker" ? "eme-catalog-card-action absolute right-3 top-3 flex size-11 items-center justify-center rounded-full border border-white/65 bg-white/82 text-[#2f2f2f] shadow-[inset_0_1px_0_rgba(255,255,255,.9),0_5px_12px_rgba(15,23,42,.10)] backdrop-blur-[14px] backdrop-saturate-[1.35] supports-[backdrop-filter]:bg-white/58" : "absolute right-4 top-4 flex size-12 items-center justify-center rounded-full bg-white/96 text-[#2f2f2f] shadow-[0_8px_20px_rgba(15,23,42,0.12)] backdrop-blur-sm"}
                   >
                     <Heart className={cn(kind === "broker" ? "size-4" : "size-5", favoriteIds.has(property.id) && "fill-[#159447] text-[#159447]")} />
                   </button>
                   </div>
 
                   <div className={kind === "broker" ? "flex flex-1 flex-col gap-4 p-4" : "grid gap-6 p-6 sm:p-7"}>
-                    <div className={kind === "broker" ? "grid gap-2" : "grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"}>
+                    <div className={kind === "broker" ? "catalog-card-summary grid gap-2" : "grid gap-4 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start"}>
                       <div className="min-w-0">
-                        <h3 className={kind === "broker" ? "line-clamp-2 text-base font-semibold leading-snug tracking-[-0.02em] text-[#111111]" : "line-clamp-2 text-[2rem] font-semibold leading-tight tracking-[-0.05em] text-[#111111]"}>
-                          {property.title}
+                        <h3 className={kind === "broker" ? "line-clamp-2 text-[17px] font-medium leading-snug tracking-[-0.02em] text-[#111111]" : "line-clamp-2 text-[2rem] font-semibold leading-tight tracking-[-0.05em] text-[#111111]"}>
+                          <button type="button" className="text-left" onClick={() => openProperty(property)}>{property.title}</button>
                         </h3>
                         <p className="mt-2.5 flex items-center gap-2 text-sm text-[#838383]">
                           <MapPin className="size-4 shrink-0 text-[#8a8a8a]" />
@@ -791,7 +747,7 @@ export function PublicCatalogLanding({
                       </div>
 
                       <div className={kind === "broker" ? "" : "sm:text-right"}>
-                        <p className={kind === "broker" ? "break-words text-base font-semibold text-[#199148]" : "break-words whitespace-nowrap text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]"}>
+                        <p className={kind === "broker" ? "break-words text-[23px] font-semibold tracking-tight text-[#172019]" : "break-words whitespace-nowrap text-[2rem] font-semibold tracking-[-0.05em] text-[#2f9c58]"}>
                           {property.price || "Consulte valor"}
                         </p>
                         {kind !== "broker" ? <p className="mt-1.5 text-sm text-[#8a8a8a]">{getShortHighlight(property)}</p> : null}
@@ -799,22 +755,23 @@ export function PublicCatalogLanding({
                     </div>
 
                     <div className={kind === "broker" ? "flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-[#626b66]" : "flex flex-wrap items-center gap-x-7 gap-y-3 text-sm text-[#545454]"}>
+                      {property.area && property.area > 0 ? <InlineSpec icon={Maximize2} value={property.area + " m²"} /> : null}
                       {property.bedrooms > 0 ? <InlineSpec icon={Bed} value={formatPositiveCountLabel(property.bedrooms, "quarto", "quartos")} /> : null}
                       {property.parking > 0 ? <InlineSpec icon={Car} value={formatPositiveCountLabel(property.parking, "vaga", "vagas")} /> : null}
                       {property.bathrooms > 0 ? <InlineSpec icon={Bath} value={formatPositiveCountLabel(property.bathrooms, "banheiro", "banheiros")} /> : null}
                     </div>
 
-                    <div className={cn("flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between", kind === "broker" && "mt-auto")}>
+                    <div className={kind === "broker" ? "mt-auto flex items-center justify-between gap-3" : "flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between"}>
                       <span className="eme-catalog-card-chip inline-flex w-fit rounded-full border border-white/60 bg-white/78 px-3.5 py-1.5 text-xs font-medium text-[#636363] shadow-[inset_0_1px_0_rgba(255,255,255,.86)] backdrop-blur-[12px] supports-[backdrop-filter]:bg-white/55">
                         {property.type === "Bolsao" ? "Bolsão" : property.type}
                       </span>
                       <Button
                         type="button"
-                        onClick={() => openLeadModal(property)}
-                        className="eme-catalog-card-interest h-9 rounded-full border border-[#dfe7e1] bg-white/70 px-4 text-xs font-medium text-[#176f3b] shadow-[0_3px_9px_rgba(32,91,53,.06)] hover:bg-white"
+                        onClick={() => openProperty(property)}
+                        className="eme-catalog-card-interest h-11 rounded-full border border-[#dfe7e1] bg-white/70 px-4 text-xs font-medium text-[#176f3b] shadow-[0_3px_9px_rgba(32,91,53,.06)] hover:bg-white"
                       >
-                        <WhatsappGlyph className="size-4" />
-                        Tenho interesse
+                        <ArrowUpRight className="size-4" />
+                        Ver imóvel
                       </Button>
                     </div>
                   </div>
@@ -859,14 +816,17 @@ export function PublicCatalogLanding({
           </>
         ) : (
           <div className={cn(CATALOG_GLASS_SURFACE_CLASS, "rounded-[1.75rem] px-6 py-16 text-center text-sm text-[#6B7280]")}>
-            Nenhum imóvel encontrado para essa busca.
+            <Search className="mx-auto mb-4 size-6" />
+            <h3 className="text-lg font-semibold text-[#172019]">{favoritesOnly ? "Sua seleção começa aqui" : "Nenhum imóvel com esses filtros"}</h3>
+            <p className="mt-2">{favoritesOnly ? "Toque no coração de um imóvel para encontrá-lo aqui depois." : "Tente ampliar o valor ou remover um filtro para ver mais opções."}</p>
+            <Button type="button" onClick={clearFilters} className={cn(CATALOG_PRIMARY_CTA_CLASS, "mt-5 h-11")}>Ver todos os imóveis</Button>
           </div>
         )) : null}
       </div>
 
       {brokerCatalog ? <BrokerContactDialog open={contactOpen} onOpenChange={setContactOpen} catalog={brokerCatalog} /> : null}
 
-      <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && setSelectedProperty(null)}>
+      <Dialog open={!!selectedProperty} onOpenChange={(open) => !open && closeProperty()}>
         <DialogContent showCloseButton className={cn("eme-catalog-property-dialog box-border max-h-[94dvh] w-[calc(100vw-1rem)] max-w-[calc(100vw-1rem)] overflow-hidden rounded-[1.5rem] p-0 sm:rounded-[1.9rem] lg:w-full lg:max-w-6xl [&_[data-slot=dialog-close]]:fixed [&_[data-slot=dialog-close]]:right-4 [&_[data-slot=dialog-close]]:top-[max(1rem,env(safe-area-inset-top))] [&_[data-slot=dialog-close]]:z-[90] [&_[data-slot=dialog-close]]:flex [&_[data-slot=dialog-close]]:size-11 [&_[data-slot=dialog-close]]:items-center [&_[data-slot=dialog-close]]:justify-center [&_[data-slot=dialog-close]]:rounded-full [&_[data-slot=dialog-close]]:border [&_[data-slot=dialog-close]]:border-white/80 [&_[data-slot=dialog-close]]:bg-white/90 [&_[data-slot=dialog-close]]:opacity-100 [&_[data-slot=dialog-close]]:shadow-lg [&_[data-slot=dialog-close]]:backdrop-blur-xl lg:[&_[data-slot=dialog-close]]:absolute lg:[&_[data-slot=dialog-close]]:right-4 lg:[&_[data-slot=dialog-close]]:top-4", CATALOG_DIALOG_SURFACE_CLASS)}>
           {selectedProperty && (
             <div className="eme-catalog-property-dialog-layout block max-h-[94dvh] w-full min-w-0 max-w-full overflow-x-hidden overflow-y-auto overscroll-contain lg:grid lg:grid-cols-[minmax(0,1.14fr)_minmax(370px,0.86fr)]">
@@ -955,10 +915,11 @@ export function PublicCatalogLanding({
                   </div>
                 </section>
                 <div className="eme-catalog-property-actions mt-5 flex shrink-0 flex-col gap-2 sm:flex-row">
-                  <Button type="button" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "eme-catalog-property-action-primary h-11 flex-1 text-base font-semibold")}>
+                  <Button type="button" onClick={() => contactProperty(selectedProperty)} className={cn(CATALOG_PRIMARY_CTA_CLASS, "eme-catalog-property-action-primary h-11 flex-1 text-base font-semibold")}>
                     <MessageCircle className="size-4" />
-                    Tenho interesse
+                    {catalog.whatsApp ? "Falar no WhatsApp" : "Solicitar contato"}
                   </Button>
+                  <Button type="button" variant="ghost" onClick={() => openLeadModal(selectedProperty)} className={cn(CATALOG_SECONDARY_CTA_CLASS, "h-11")}>Solicitar retorno</Button>
                   <Button type="button" variant="ghost" onClick={() => void shareUrl(`${catalogUrl}#imovel-${selectedProperty.id}`, selectedProperty.title, "Veja este imóvel")} className={cn(CATALOG_SECONDARY_CTA_CLASS, "eme-catalog-property-action-secondary h-11 px-5 text-[#4B5563]")}>
                     <Share2 className="size-4" />
                     Compartilhar
@@ -979,8 +940,8 @@ export function PublicCatalogLanding({
               </DialogTitle>
               <DialogDescription className="text-[#6B7280]">
                 {leadDraft.property
-                  ? "Para falar com o corretor, me diga seu nome."
-                  : "Preencha seus dados para iniciar o atendimento com o corretor."}
+                  ? "Deixe seu nome e telefone para o corretor retornar sobre este imóvel."
+                  : "Preencha seus dados para solicitar o retorno do corretor."}
               </DialogDescription>
               <div className="grid gap-4 py-2">
                 <label className="grid gap-2">
@@ -999,7 +960,7 @@ export function PublicCatalogLanding({
               </div>
               <DialogFooter>
                 <Button type="button" onClick={submitLead} disabled={isSavingLead} className={cn(CATALOG_PRIMARY_CTA_CLASS, "h-11 w-full text-base font-semibold disabled:opacity-60")}>
-                  {isSavingLead ? "Salvando..." : "Continuar no WhatsApp"}
+                  {isSavingLead ? "Enviando..." : "Solicitar retorno"}
                 </Button>
               </DialogFooter>
             </>
@@ -1070,412 +1031,6 @@ async function trackCatalogEvent({
   } catch {
     // Tracking nao deve bloquear a experiencia publica do catalogo.
   }
-}
-
-type SearchFieldName =
-  | "title"
-  | "type"
-  | "purpose"
-  | "location"
-  | "neighborhood"
-  | "city"
-  | "description"
-  | "code"
-
-type SearchAnalysis = {
-  query: string
-  tokens: string[]
-  expandedTokens: string[]
-  maxPrice: number | null
-  bedrooms: number | null
-  parking: number | null
-  type: string
-  purpose: string
-  features: string[]
-  intent: string
-}
-
-type PropertySearchIndex = {
-  title: string
-  type: string
-  purpose: string
-  location: string
-  neighborhood: string
-  city: string
-  description: string
-  code: string
-  haystack: string
-  tokens: string[]
-}
-
-const SEARCH_FIELD_WEIGHTS: Record<SearchFieldName, number> = {
-  title: 12,
-  type: 11,
-  purpose: 8,
-  location: 6,
-  neighborhood: 9,
-  city: 8,
-  description: 5,
-  code: 7,
-}
-
-const FEATURE_KEYWORDS = [
-  "frente mar",
-  "alto padrao",
-  "investimento",
-  "suite",
-  "sacada",
-  "piscina",
-  "churrasqueira",
-  "academia",
-  "gourmet",
-  "condominio",
-  "jardim",
-  "jardins",
-] as const
-
-const TOKEN_SYNONYMS: Record<string, string[]> = {
-  sala: ["salas", "comercial", "escritorio", "escritorios", "office", "corporativa"],
-  comercial: ["sala", "salas", "escritorio", "escritorios", "loja", "corporativa"],
-  escritorio: ["escritorios", "sala", "comercial", "office"],
-  apartamento: ["apto", "apartamentos"],
-  apto: ["apartamento", "apartamentos"],
-  cobertura: ["coberturas", "penthouse"],
-  casa: ["casas", "residencia", "residencial"],
-  terrreno: ["terreno", "lote"],
-  jardim: ["jardins"],
-  jardins: ["jardim"],
-  locacao: ["aluguel", "alugar", "residencial", "comercial"],
-  venda: ["comprar", "compra"],
-  investimento: ["investidor", "renda"],
-}
-
-function buildPropertySearchIndex(property: CatalogProperty): PropertySearchIndex {
-  const index = {
-    title: normalizeText(property.title),
-    type: normalizeText(property.type),
-    purpose: normalizeText(property.purpose),
-    location: normalizeText(property.location),
-    neighborhood: normalizeText(property.neighborhood),
-    city: normalizeText(property.city),
-    description: normalizeText(property.description),
-    code: normalizeText(property.publicCode ? String(property.publicCode) : ""),
-  }
-
-  const haystack = normalizeText(
-    [
-      property.title,
-      property.type,
-      property.purpose,
-      property.location,
-      property.neighborhood,
-      property.city,
-      property.description,
-      property.publicCode ? `imovel ${property.publicCode}` : "",
-      property.bedrooms ? `${property.bedrooms} quartos` : "",
-      property.parking ? `${property.parking} vagas` : "",
-      property.price,
-    ].join(" "),
-  )
-
-  return {
-    ...index,
-    haystack,
-    tokens: buildSearchTerms(haystack),
-  }
-}
-
-function analyzeSearch(rawSearch: string): SearchAnalysis {
-  const query = normalizeText(rawSearch)
-  const tokens = buildSearchTerms(query)
-  const expandedTokens = Array.from(new Set(tokens.flatMap((token) => [token, ...expandToken(token)])))
-  const maxPrice = extractPriceValue(query)
-  const bedrooms = extractNumericIntent(query, ["quarto", "quartos", "dormitorio", "dormitorios"])
-  const parking = extractNumericIntent(query, ["vaga", "vagas", "garagem", "garagens"])
-  const type = inferSearchType(query, expandedTokens)
-  const purpose = inferSearchPurpose(query)
-  const features = FEATURE_KEYWORDS.filter((feature) => query.includes(feature))
-
-  return {
-    query,
-    tokens,
-    expandedTokens,
-    maxPrice,
-    bedrooms,
-    parking,
-    type,
-    purpose,
-    features,
-    intent:
-      [
-        type,
-        purpose,
-        maxPrice ? `ate ${maxPrice}` : "",
-        bedrooms ? `${bedrooms} quartos` : "",
-        parking ? `${parking} vagas` : "",
-        ...features,
-      ]
-        .filter(Boolean)
-        .join(", ") || rawSearch.trim(),
-  }
-}
-
-function rankProperties(
-  properties: CatalogProperty[],
-  analysis: SearchAnalysis,
-  filters: CatalogAdvancedFilters,
-) {
-  return properties
-    .map((property) => {
-      const index = buildPropertySearchIndex(property)
-      const compatible =
-        matchesNaturalLanguage(property, analysis, index) &&
-        matchesAdvancedFilters(property, filters, index)
-      const score = calculatePropertyScore(property, analysis, index, compatible)
-
-      return {
-        property,
-        compatible,
-        score,
-        matchLabel: score >= 28 ? "Destaque" : score >= 16 ? "Selecionado" : "Boa opção",
-      }
-    })
-    .filter((item) => item.compatible)
-    .sort((first, second) => second.score - first.score || second.property.views - first.property.views)
-}
-
-function calculatePropertyScore(
-  property: CatalogProperty,
-  analysis: SearchAnalysis,
-  index: PropertySearchIndex,
-  compatible: boolean,
-) {
-  let score = compatible ? 1 : 0
-
-  if (!analysis.query) score += 2
-  if (analysis.type && normalizeText(property.type) === normalizeText(analysis.type)) score += 18
-  if (analysis.purpose && normalizeText(property.purpose) === normalizeText(analysis.purpose)) score += 8
-  if (analysis.maxPrice && property.priceValue <= analysis.maxPrice) score += 6
-  if (analysis.bedrooms && property.bedrooms >= analysis.bedrooms) score += 5
-  if (analysis.parking && property.parking >= analysis.parking) score += 4
-
-  for (const feature of analysis.features) {
-    if (index.haystack.includes(feature)) score += 7
-  }
-
-  for (const token of analysis.expandedTokens) {
-    score += scoreTokenAcrossFields(token, index)
-  }
-
-  if (analysis.query && index.title.includes(analysis.query)) score += 14
-  if (analysis.query && index.type.includes(analysis.query)) score += 11
-  if (analysis.query && index.description.includes(analysis.query)) score += 5
-
-  return score
-}
-
-function scoreTokenAcrossFields(token: string, index: PropertySearchIndex) {
-  let score = 0
-
-  for (const [field, weight] of Object.entries(SEARCH_FIELD_WEIGHTS) as Array<[SearchFieldName, number]>) {
-    const value = index[field]
-    if (!value) continue
-    if (value === token) {
-      score += weight + 3
-      continue
-    }
-    if (value.includes(` ${token} `) || value.startsWith(`${token} `) || value.endsWith(` ${token}`)) {
-      score += weight + 1
-      continue
-    }
-    if (value.includes(token)) score += Math.max(2, Math.floor(weight / 2))
-  }
-
-  return score
-}
-
-function matchesNaturalLanguage(property: CatalogProperty, analysis: SearchAnalysis, index: PropertySearchIndex) {
-  if (!analysis.query.trim()) return true
-  if (analysis.maxPrice && property.priceValue > analysis.maxPrice) return false
-  if (analysis.bedrooms && property.bedrooms < analysis.bedrooms) return false
-  if (analysis.parking && property.parking < analysis.parking) return false
-  if (analysis.type && normalizeText(property.type) !== normalizeText(analysis.type)) return false
-  if (analysis.purpose && normalizeText(property.purpose) !== normalizeText(analysis.purpose)) return false
-  if (analysis.features.some((feature) => !index.haystack.includes(feature))) return false
-
-  if (analysis.expandedTokens.length === 0) return true
-
-  const matchedTerms = analysis.tokens.filter((token) =>
-    [token, ...expandToken(token)].some((candidate) => index.haystack.includes(candidate)),
-  )
-
-  if (matchedTerms.length > 0) return true
-
-  return analysis.expandedTokens.some((token) => hasFuzzyTokenMatch(token, index.tokens))
-}
-
-function matchesAdvancedFilters(property: CatalogProperty, filters: CatalogAdvancedFilters, index: PropertySearchIndex) {
-  if (filters.type && normalizeText(property.type) !== normalizeText(filters.type)) return false
-  if (filters.city && !index.city.includes(normalizeText(filters.city))) return false
-  if (filters.neighborhood && !index.neighborhood.includes(normalizeText(filters.neighborhood))) return false
-
-  const bedrooms = Number(filters.bedrooms)
-  if (Number.isFinite(bedrooms) && bedrooms > 0 && property.bedrooms < bedrooms) return false
-
-  const parking = Number(filters.parking)
-  if (Number.isFinite(parking) && parking > 0 && property.parking < parking) return false
-
-  const maxPrice = extractPriceValue(filters.maxPrice)
-  if (maxPrice && property.priceValue > maxPrice) return false
-
-  const featureTerms = buildSearchTerms(normalizeText(filters.feature))
-  if (featureTerms.some((feature) => !index.haystack.includes(feature))) return false
-
-  return true
-}
-
-function hasActiveAdvancedFilters(filters: CatalogAdvancedFilters) {
-  return Object.values(filters).some((value) => value.trim().length > 0)
-}
-
-function extractPriceValue(input: string) {
-  const match = normalizeText(input).match(/(\d+[.,]?\d*)\s*(milhoes|milhao|mi|mil)?/)
-  if (!match) return null
-
-  const amount = Number(match[1].replace(",", "."))
-  if (!Number.isFinite(amount)) return null
-
-  const unit = match[2] ?? ""
-  if (unit.startsWith("mi") || unit.startsWith("milhao")) return Math.round(amount * 1_000_000 * 100)
-  if (unit.startsWith("mil")) return Math.round(amount * 1_000 * 100)
-  return Math.round(amount * 100)
-}
-
-function extractNumericIntent(query: string, keywords: string[]) {
-  const pattern = new RegExp(`(\\d+)\\s*(?:${keywords.join("|")})`)
-  const match = query.match(pattern)
-  if (!match) return null
-
-  const value = Number(match[1])
-  return Number.isFinite(value) ? value : null
-}
-
-function normalizeText(value: string) {
-  return value
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/[-_/.,;:()]+/g, " ")
-    .toLowerCase()
-    .replace(/\s+/g, " ")
-    .trim()
-}
-
-function buildSearchTerms(query: string) {
-  const stopWords = new Set([
-    "a",
-    "as",
-    "ate",
-    "com",
-    "da",
-    "das",
-    "de",
-    "do",
-    "dos",
-    "e",
-    "em",
-    "mil",
-    "milhao",
-    "milhoes",
-    "mi",
-    "no",
-    "nos",
-    "na",
-    "nas",
-    "para",
-    "por",
-    "quarto",
-    "quartos",
-    "vaga",
-    "vagas",
-    "imovel",
-    "imoveis",
-    "um",
-    "uma",
-  ])
-
-  return query
-    .replace(/[^\p{L}\p{N}\s]/gu, " ")
-    .split(/\s+/)
-    .map((term) => normalizeToken(term.trim()))
-    .filter((term) => term.length > 2)
-    .filter((term) => !stopWords.has(term))
-    .filter((term) => !/^\d+$/.test(term))
-}
-
-function normalizeToken(term: string) {
-  const cleaned = normalizeText(term)
-  if (cleaned.endsWith("oes")) return `${cleaned.slice(0, -3)}ao`
-  if (cleaned.endsWith("ais")) return `${cleaned.slice(0, -3)}al`
-  if (cleaned.endsWith("eis")) return `${cleaned.slice(0, -3)}el`
-  if (cleaned.endsWith("res")) return cleaned.slice(0, -1)
-  if (cleaned.endsWith("s") && cleaned.length > 4) return cleaned.slice(0, -1)
-  return cleaned
-}
-
-function expandToken(token: string) {
-  const normalized = normalizeToken(token)
-  return (TOKEN_SYNONYMS[normalized] ?? []).map(normalizeToken)
-}
-
-function inferSearchType(query: string, tokens: string[]) {
-  if (query.includes("cobertura") || tokens.includes("cobertura")) return "Cobertura"
-  if (tokens.includes("casa")) return "Casa"
-  if (tokens.includes("terreno")) return "Terreno"
-  if (tokens.includes("loja")) return "Loja"
-  if (tokens.includes("sala") || tokens.includes("comercial") || tokens.includes("escritorio")) return "Sala Comercial"
-  if (tokens.includes("apartamento") || tokens.includes("apto")) return "Apartamento"
-  return ""
-}
-
-function inferSearchPurpose(query: string) {
-  if (query.includes("locacao") || query.includes("aluguel") || query.includes("alugar")) return "Locacao"
-  if (query.includes("venda") || query.includes("comprar") || query.includes("compra")) return "Venda"
-  return ""
-}
-
-function hasFuzzyTokenMatch(token: string, candidates: string[]) {
-  return candidates.some((candidate) => {
-    if (candidate === token) return true
-    if (candidate.includes(token) || token.includes(candidate)) return true
-    return levenshteinDistance(token, candidate) <= 2
-  })
-}
-
-function levenshteinDistance(source: string, target: string) {
-  if (source === target) return 0
-  if (!source.length) return target.length
-  if (!target.length) return source.length
-
-  const matrix = Array.from({ length: source.length + 1 }, (_, row) =>
-    Array.from({ length: target.length + 1 }, (_, column) => {
-      if (row === 0) return column
-      if (column === 0) return row
-      return 0
-    }),
-  )
-
-  for (let row = 1; row <= source.length; row += 1) {
-    for (let column = 1; column <= target.length; column += 1) {
-      const cost = source[row - 1] === target[column - 1] ? 0 : 1
-      matrix[row][column] = Math.min(
-        matrix[row - 1][column] + 1,
-        matrix[row][column - 1] + 1,
-        matrix[row - 1][column - 1] + cost,
-      )
-    }
-  }
-
-  return matrix[source.length][target.length]
 }
 
 function getPriceRangeLabel(properties: CatalogProperty[]) {

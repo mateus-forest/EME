@@ -4,6 +4,7 @@ import { cookies } from "next/headers"
 import { CatalogThemeProvider } from "@/components/catalog-theme-provider"
 import { CATALOG_THEME_COOKIE, parseCatalogTheme } from "@/lib/catalog-theme"
 import "../imoveis/marketplace.css"
+import "./catalog-refined.css"
 
 export default async function CatalogLayout({ children }: { children: ReactNode }) {
   const cookieStore = await cookies()

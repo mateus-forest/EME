@@ -74,83 +74,40 @@ export function BrokerCatalogHeader({
   const themeLabel = isDark ? "Ativar tema claro" : "Ativar tema escuro"
 
   return (
-      <header className="sticky top-0 z-50 px-3 pt-4 sm:px-5 sm:pt-5">
-        <div className="eme-catalog-header-surface relative mx-auto max-w-[1240px] overflow-hidden rounded-[1.2rem] border border-white/80 bg-white/72 px-4 shadow-[inset_0_1px_0_rgba(255,255,255,.96),0_8px_24px_rgba(54,48,39,.08)] backdrop-blur-[24px] backdrop-saturate-[1.2] supports-[backdrop-filter]:bg-white/48 sm:px-6">
-          <div className="relative flex h-[66px] items-center gap-2 sm:h-[70px] sm:gap-3">
-          <div className="flex shrink-0 items-center gap-2">
-            <Link
-              href={catalogPath}
-              className="flex shrink-0 items-center rounded-xl outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/30"
-              aria-label="EME — início do catálogo"
-            >
-              <Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={44} height={30} className="h-auto w-10 sm:w-11" priority />
-            </Link>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="eme-catalog-theme-toggle flex size-9 shrink-0 items-center justify-center rounded-full border border-[#e9e5dd] bg-white/78 text-[#303631] shadow-[0_4px_12px_rgba(43,39,32,.08)] backdrop-blur-[16px] transition hover:-translate-y-0.5 hover:bg-white hover:text-[#0f6f37] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#159447]/35 sm:size-10"
-              aria-label={themeLabel}
-              aria-pressed={isDark}
-              title={themeLabel}
-            >
-              {isDark ? <Sun className="size-4" aria-hidden="true" /> : <Moon className="size-4" aria-hidden="true" />}
-            </button>
-          </div>
-
-          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 lg:flex" aria-label="Navegação do catálogo">
-            <CatalogNavLink href={catalogPath} active={view !== "about"}>Imóveis</CatalogNavLink>
-            <CatalogNavLink href={`${catalogPath}/sobre`} active={view === "about"}>Sobre o corretor</CatalogNavLink>
-            <button type="button" onClick={onContact} className="rounded-full border border-transparent px-4 py-2 text-sm font-medium text-[#333a36] transition hover:border-[#e8e4dc] hover:bg-white/65 hover:text-[#0f6f37]">
-              Contato
-            </button>
-          </nav>
-
-            <div className="ml-auto flex shrink-0 items-center gap-1 sm:gap-2">
-              <AssistantLauncher
-                className="relative !size-9 !shrink-0 !justify-center !gap-0 !rounded-full !border-[#e9e5dd] !bg-white/78 !p-0 !shadow-[0_4px_12px_rgba(43,39,32,.08)] !backdrop-blur-[16px] hover:!bg-white sm:!size-10 [&>*:first-child]:!m-0 [&>span:last-child]:!absolute [&>span:last-child]:!right-0.5 [&>span:last-child]:!top-0.5"
-                labelClassName="sr-only"
-              />
-              {catalog.whatsApp ? <button type="button" onClick={onContact} className="flex size-9 items-center justify-center rounded-full border border-[#0d7137]/10 bg-[#0d7137] text-white shadow-[0_5px_14px_rgba(13,113,55,.18)] transition hover:-translate-y-0.5 hover:bg-[#095f2d] sm:size-10" aria-label="Falar pelo WhatsApp" title="Falar pelo WhatsApp"><WhatsappGlyph className="size-4 sm:size-4.5" /></button> : null}
-              <button type="button" onClick={onShare} className="flex size-9 items-center justify-center rounded-full border border-[#e9e5dd] bg-white/78 text-[#303631] shadow-[0_4px_12px_rgba(43,39,32,.08)] backdrop-blur-[16px] transition hover:-translate-y-0.5 hover:bg-white hover:text-[#0f6f37] sm:size-10" aria-label="Compartilhar catálogo" title="Compartilhar catálogo">
-                <Share2 className="size-4" />
-            </button>
-          </div>
-        </div>
-
-        <nav className="flex justify-center gap-1 overflow-x-auto border-t border-white/65 py-2 lg:hidden" aria-label="Navegação do catálogo mobile">
+    <header className="catalog-header">
+      <div className="catalog-header-inner">
+        <Link href={catalogPath} aria-label="EME — início do catálogo" className="catalog-logo">
+          <Image src="/marketplace/eme-logo-raw.svg" alt="EME" width={56} height={36} priority />
+        </Link>
+        <nav aria-label="Navegação do catálogo" className="catalog-nav">
           <CatalogNavLink href={catalogPath} active={view !== "about"}>Imóveis</CatalogNavLink>
-          <CatalogNavLink href={`${catalogPath}/sobre`} active={view === "about"}>Sobre o corretor</CatalogNavLink>
-          <button type="button" onClick={onContact} className="shrink-0 rounded-full border border-transparent px-3 py-2 text-xs font-medium text-[#4c5551] transition hover:border-white/80 hover:bg-white/55">Contato</button>
+          <CatalogNavLink href={catalogPath + "/sobre"} active={view === "about"}>Sobre</CatalogNavLink>
         </nav>
+        <div className="catalog-header-actions">
+          <div className="hidden md:block"><AssistantLauncher className="!size-11 !p-0" labelClassName="sr-only" /></div>
+          <button type="button" onClick={toggleTheme} className="catalog-icon" aria-label={themeLabel} aria-pressed={isDark}>
+            {isDark ? <Sun size={18} /> : <Moon size={18} />}
+          </button>
+          <button type="button" onClick={onShare} className="catalog-icon catalog-share" aria-label="Compartilhar catálogo"><Share2 size={18} /></button>
+          <button type="button" onClick={onContact} className="catalog-contact" aria-label="Falar com o corretor"><WhatsappGlyph className="size-[18px]" /><span>Contato</span></button>
+        </div>
       </div>
     </header>
   )
 }
 
 function CatalogNavLink({ href, active, children }: { href: string; active: boolean; children: string }) {
-  return (
-    <Link
-      href={href}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "relative shrink-0 rounded-full border px-3 py-2 text-xs font-medium transition sm:px-4 sm:text-sm",
-        active
-          ? "border-[#ebe7df] bg-white/72 text-[#111713] shadow-[0_3px_10px_rgba(45,41,34,.06)] backdrop-blur-[14px]"
-          : "border-transparent text-[#3f4541] hover:border-[#ebe7df] hover:bg-white/50 hover:text-[#0f6f37]",
-      )}
-    >
-      {children}
-      {active ? <span className="absolute inset-x-4 -bottom-[9px] h-0.5 rounded-full bg-[#b38a3b] lg:-bottom-[13px]" /> : null}
-    </Link>
-  )
+  return <Link href={href} aria-current={active ? "page" : undefined}>{children}</Link>
 }
 
 export function BrokerProfileHero({
   catalog,
   priceRange,
+  compact = false,
 }: {
   catalog: PublicBrokerCatalogData
   priceRange: string
+  compact?: boolean
   onShare: () => void
   onWhatsApp: () => void
 }) {
@@ -171,6 +128,26 @@ export function BrokerProfileHero({
       ? { icon: CircleDollarSign, value: priceRange, label: "Faixa de preço", wideMobile: true }
       : null,
   ].filter((metric): metric is NonNullable<typeof metric> => Boolean(metric))
+
+  if (compact) return (
+    <section className="catalog-profile" aria-label="Seu corretor">
+      <div className="catalog-profile-main">
+        <div className="catalog-portrait">
+          {catalog.photoUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={catalog.photoUrl} alt={catalog.displayName} fetchPriority="high" />
+          ) : <span>{getInitials(catalog.displayName)}</span>}
+        </div>
+        <div className="catalog-profile-copy">
+          <p className="catalog-eyebrow">Seu corretor de imóveis</p>
+          <h1>{catalog.displayName}{catalog.creciVerified ? <BadgeCheck aria-label="CRECI verificado" className="catalog-verified" /> : null}</h1>
+          <p className="catalog-profile-meta">{[creciLabel(catalog), catalog.serviceArea].filter(Boolean).join(" · ")}</p>
+          {catalog.specialties[0] ? <p className="catalog-specialty">{catalog.specialties[0]}</p> : null}
+        </div>
+      </div>
+      <Link className="catalog-profile-link" href={buildBrokerCatalogPath(catalog.slug) + "/sobre"}>Conheça o corretor <ChevronRight size={15} /></Link>
+    </section>
+  )
 
   return (
     <section className="relative mx-auto w-full max-w-[1240px] pt-0">
